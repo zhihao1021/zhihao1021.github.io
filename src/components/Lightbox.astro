@@ -39,7 +39,7 @@
         const { width, height } = natural;
         if (!width || !height) return;
         const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
-        const maxW = Math.min(innerWidth * 0.92, 1600);
+        const maxW = Math.min(document.documentElement.clientWidth * 0.92, 1600);
         const maxH = innerHeight - 9 * rem; // 保留上方關閉鈕與下方說明文字的空間
         const scale = Math.min(1, maxW / width, maxH / height);
         frame.style.width = `${Math.round(width * scale)}px`;
@@ -90,7 +90,43 @@
         caption.hidden = !img.alt;
         dialog.classList.remove("is-closing");
         dialog.showModal();
+        lockScroll();
     }
+
+    /*
+     * 開啟時鎖定頁面捲動：攔截滾輪、單指滑動與捲動按鍵；
+     * 拖曳捲軸等無法攔截的捲動則立即拉回原位。關閉（含 Esc）時解除。
+     */
+    const SCROLL_KEYS = new Set([" ", "PageUp", "PageDown", "Home", "End", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"]);
+    let lockedAt: { left: number; top: number } | null = null;
+
+    const blockWheel = (e: WheelEvent) => e.preventDefault();
+    // 保留雙指縮放
+    const blockTouch = (e: TouchEvent) => e.touches.length === 1 && e.preventDefault();
+    const blockKeys = (e: KeyboardEvent) => {
+        // 按鈕上的空白鍵用於觸發按鈕（關閉）
+        if (e.key === " " && e.target instanceof HTMLButtonElement) return;
+        if (SCROLL_KEYS.has(e.key)) e.preventDefault();
+    };
+    const restore = () => lockedAt && scrollTo({ ...lockedAt, behavior: "instant" });
+
+    function lockScroll() {
+        lockedAt = { left: scrollX, top: scrollY };
+        addEventListener("wheel", blockWheel, { passive: false });
+        addEventListener("touchmove", blockTouch, { passive: false });
+        addEventListener("keydown", blockKeys);
+        addEventListener("scroll", restore);
+    }
+
+    function unlockScroll() {
+        lockedAt = null;
+        removeEventListener("wheel", blockWheel);
+        removeEventListener("touchmove", blockTouch);
+        removeEventListener("keydown", blockKeys);
+        removeEventListener("scroll", restore);
+    }
+
+    dialog.addEventListener("close", unlockScroll);
 
     function close() {
         if (!dialog.open || dialog.classList.contains("is-closing")) return;
@@ -155,13 +191,29 @@
         cursor: default;
     }
 
-    /* 開啟時鎖定頁面捲動 */
+    /*
+     * 開啟時：頁面捲軸是瀏覽器繪製的，無法被任何元素覆蓋，
+     * 因此改成「背景遮罩疊在其上」的顏色，看起來就像被遮住（捲動由 script 鎖定，不用 overflow: hidden，
+     * 否則捲軸消失後會留下 scrollbar-gutter 保留的空白）。
+     */
     html:has(.lightbox[open]) {
-        overflow: hidden;
+        --lb-scrollbar-track: color-mix(in srgb, rgb(10 12 14) 72%, var(--bg));
+        --lb-scrollbar-thumb: color-mix(in srgb, rgb(10 12 14) 72%, color-mix(in srgb, var(--text) 22%, var(--bg)));
+        scrollbar-color: var(--lb-scrollbar-thumb) var(--lb-scrollbar-track);
+    }
+
+    /* Safari */
+    html:has(.lightbox[open])::-webkit-scrollbar-track {
+        background: var(--lb-scrollbar-track);
+    }
+
+    html:has(.lightbox[open])::-webkit-scrollbar-thumb {
+        background: var(--lb-scrollbar-thumb) padding-box;
     }
 
     .lightbox {
-        width: 100vw;
+        /* 100%：不含捲軸寬度，內容在可見區域置中 */
+        width: 100%;
         max-width: none;
         height: 100dvh;
         max-height: none;

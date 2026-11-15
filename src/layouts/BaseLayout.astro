@@ -58,7 +58,7 @@ const pageTitle = title ? `${title} | ${site.title}` : site.title;
             href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,200..400,0,0&display=block"
         />
         <script async src="https://www.googletagmanager.com/gtm.js?id=GTM-K6KR9WZ6"></script>
-        <script>
+        <script is:inline>
         window.dataLayer = window.dataLayer || [];
         function gtag(){dataLayer.push(arguments);}
         gtag('js', new Date());
@@ -134,6 +134,45 @@ const pageTitle = title ? `${title} | ${site.title}` : site.title;
     html,
     body {
         margin: 0;
+    }
+
+    /*
+     * 捲軸：細、半透明、跟隨明暗主題，軌道與背景同色。
+     * Chrome / Edge / Firefox 使用標準屬性；Safari 只支援 ::-webkit-scrollbar（設了標準屬性的瀏覽器會忽略它）。
+     */
+    :root {
+        --scrollbar-thumb: color-mix(in srgb, var(--text) 22%, transparent);
+        --scrollbar-thumb-hover: color-mix(in srgb, var(--text) 38%, transparent);
+    }
+
+    /* 永遠保留捲軸寬度：長短頁面切換、或放大圖片鎖定捲動時，版面不會左右偏移（軌道透明，看不出來） */
+    html {
+        scrollbar-gutter: stable;
+    }
+
+    html,
+    * {
+        scrollbar-width: thin;
+        scrollbar-color: var(--scrollbar-thumb) transparent;
+    }
+
+    ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+    }
+
+    ::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    ::-webkit-scrollbar-thumb {
+        border: 2px solid transparent;
+        border-radius: 999px;
+        background: var(--scrollbar-thumb) padding-box;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+        background: var(--scrollbar-thumb-hover) padding-box;
     }
 
     body {

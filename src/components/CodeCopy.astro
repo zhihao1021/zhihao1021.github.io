@@ -83,6 +83,12 @@
         margin: 0;
     }
 
+    /* 程式碼區塊為深色背景，捲軸改用淺色 */
+    .prose pre {
+        --scrollbar-thumb: rgb(255 255 255 / 0.22);
+        --scrollbar-thumb-hover: rgb(255 255 255 / 0.38);
+    }
+
     .code-copy {
         position: absolute;
         top: 0.5rem;
