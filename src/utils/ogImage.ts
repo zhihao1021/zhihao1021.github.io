@@ -26,15 +26,22 @@ export interface OgCard {
 
 /* ---------- 顏色（與網站淺色主題一致） ---------- */
 const COLORS = {
-    bg: "#ffffff",
     text: "#1f1f1f",
     muted: "#6b6b6b",
     line: "#e6e6e4",
     /** 文字用（白底上需夠深） */
     accent: "#6e6e28",
-    /** 底部色條（裝飾，直接使用主題色） */
-    accentBar: "#d8d890",
 };
+
+/**
+ * 背景：主題色 #d8d890 的斜向漸層，疊上左上角的亮光與右下角的深色光暈；
+ * 內容放在半透明的白色卡片上，維持文字可讀性。
+ */
+const BACKGROUND = [
+    "radial-gradient(circle at 0% 0%, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0) 45%)",
+    "radial-gradient(circle at 100% 100%, rgba(110, 110, 40, 0.45) 0%, rgba(110, 110, 40, 0) 55%)",
+    "linear-gradient(135deg, #f6f6e4 0%, #e8e8bf 45%, #d8d890 100%)",
+].join(", ");
 
 const FONT_FAMILY = "Noto Sans TC";
 
@@ -106,24 +113,36 @@ function layout(card: OgCard, avatar: string): Node {
                 width: OG_WIDTH,
                 height: OG_HEIGHT,
                 display: "flex",
-                flexDirection: "column",
-                position: "relative",
-                padding: "64px 72px 12px",
-                background: COLORS.bg,
+                padding: 36,
+                backgroundImage: BACKGROUND,
                 color: COLORS.text,
                 fontFamily: FONT_FAMILY,
             },
         },
+        h(
+            "div",
+            {
+                style: {
+                    display: "flex",
+                    flexDirection: "column",
+                    flexGrow: 1,
+                    padding: "40px 56px 0",
+                    borderRadius: 28,
+                    border: "1px solid rgba(255, 255, 255, 0.9)",
+                    background: "rgba(255, 255, 255, 0.82)",
+                    boxShadow: "0 24px 60px -20px rgba(70, 70, 20, 0.35)",
+                },
+            },
         // 頂部：頭像 + 網站名稱
         h(
             "div",
-            { style: { display: "flex", alignItems: "center", gap: 22 } },
-            h("img", { src: avatar, width: 76, height: 76, style: { borderRadius: 16 } }),
+            { style: { display: "flex", alignItems: "center", gap: 18 } },
+            h("img", { src: avatar, width: 64, height: 64, style: { borderRadius: 14 } }),
             h(
                 "div",
                 { style: { display: "flex", flexDirection: "column" } },
-                h("div", { style: { fontSize: 30, fontWeight: 700 } }, site.title),
-                h("div", { style: { fontSize: 22, color: COLORS.muted } }, site.name),
+                h("div", { style: { fontSize: 26, fontWeight: 700 } }, site.title),
+                h("div", { style: { fontSize: 20, color: COLORS.muted } }, site.name),
             ),
         ),
 
@@ -143,13 +162,13 @@ function layout(card: OgCard, avatar: string): Node {
                 h("div", { style: { fontSize: 22, color: COLORS.accent, marginBottom: 14 } }, card.eyebrow),
             h(
                 "div",
-                { style: { ...clamp(2), fontSize: 58, fontWeight: 700, lineHeight: 1.3 } },
+                { style: { ...clamp(2), fontSize: 54, fontWeight: 700, lineHeight: 1.3 } },
                 card.title,
             ),
             card.description &&
                 h(
                     "div",
-                    { style: { ...clamp(2), marginTop: 24, fontSize: 30, lineHeight: 1.5, color: COLORS.muted } },
+                    { style: { ...clamp(2), marginTop: 20, fontSize: 28, lineHeight: 1.5, color: COLORS.muted } },
                     card.description,
                 ),
         ),
@@ -162,7 +181,7 @@ function layout(card: OgCard, avatar: string): Node {
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "space-between",
-                    height: 96,
+                    height: 80,
                     borderTop: `2px solid ${COLORS.line}`,
                     fontSize: 24,
                     color: COLORS.muted,
@@ -171,9 +190,7 @@ function layout(card: OgCard, avatar: string): Node {
             h("div", { style: { display: "flex", gap: 28 } }, ...(card.meta ?? []).map((m) => h("div", {}, m))),
             h("div", {}, host),
         ),
-
-        // 最下方的主題色條
-        h("div", { style: { position: "absolute", left: 0, right: 0, bottom: 0, height: 12, background: COLORS.accentBar } }),
+        ),
     );
 }
 

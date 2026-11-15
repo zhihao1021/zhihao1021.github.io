@@ -1,15 +1,15 @@
 ---
-title: 01：不依賴 Vitis 將 Bitstream 燒錄至 CMOD-A7 上
+title: 01：不依賴 Vitis 將 Bitstream 燒錄至 Cmod-A7 上
 date: 2026-11-16
 updated: 2026-11-16T04:51:00+08:00
-summary: 簡述如何在不使用 Vitis 的情況下，將 Bitstream 燒錄至 CMOD-A7 開發板上。
+summary: 簡述如何在不使用 Vitis 的情況下，將 Bitstream 燒錄至 Cmod-A7 開發板上。
 tags: ["微算機 2027"]
 ---
 
-> 本篇文章將簡述如何在不使用 Vitis 的情況下，將 Bitstream 燒錄至 CMOD-A7 開發板上。
+> 本篇文章將簡述如何在不使用 Vitis 的情況下，將 Bitstream 燒錄至 Cmod-A7 開發板上。
 
 ## 一、安裝 OpenFPGALoader
-OpenFPGALoader 是一款跨平台的 FPGA 程式設計工具，相容於眾多主流廠商的 FPGA 及開發版，並且可在 Linux、Windows 和 macOS 系統上運作，在這份教學中，我們將使用 OpenFPGALoader 來將 Bitstream 燒錄至 CMOD-A7 開發板上。
+OpenFPGALoader 是一款跨平台的 FPGA 程式設計工具，相容於眾多主流廠商的 FPGA 及開發版，並且可在 Linux、Windows 和 macOS 系統上運作，在這份教學中，我們將使用 OpenFPGALoader 來將 Bitstream 燒錄至 Cmod-A7 開發板上。
 
 以下安裝教學參考自官方網站上的安裝說明：[https://trabucayre.github.io/openFPGALoader/guide/install.html](https://trabucayre.github.io/openFPGALoader/guide/install.html)
 
@@ -41,7 +41,7 @@ brew install openfpgaloader
 ```
 
 ## 二、替換 USB 驅動程式（僅 Windows）
-> 由於 OpenFPGALoader 需要使用 libusb 來與 CMOD-A7 開發板進行通訊，因此我們需要替換掉 Windows 預設的 USB 驅動程式，改為使用 libusb 的驅動程式。
+> 由於 OpenFPGALoader 需要使用 libusb 來與 Cmod-A7 開發板進行通訊，因此我們需要替換掉 Windows 預設的 USB 驅動程式，改為使用 libusb 的驅動程式。
 
 :::warning
 替換 USB 驅動程式後，可能無法同時使用 Vivado 或是 Vitis 進行燒錄或偵錯，如果在替換後想要恢復，請參考[如果替換錯設備怎麼辦？](#如果替換錯設備怎麼辦) 來還原驅動程式。
@@ -55,7 +55,7 @@ brew install openfpgaloader
     ![選擇 Digilent Adept USB Device (Interface 0)|600](./01-cmod-a7-setup.md/screenshot5.png)
 
     :::info
-    如果你在下拉選單中找不到 `Digilent Adept USB Device (Interface 0)`，請嘗試先關閉 Zadig 工具，然後重新插拔 CMOD-A7 開發板，並再次開啟 Zadig 工具。
+    如果你在下拉選單中找不到 `Digilent Adept USB Device (Interface 0)`，請嘗試先關閉 Zadig 工具，然後重新插拔 Cmod-A7 開發板，並再次開啟 Zadig 工具。
     :::
     :::warning
     請選擇 `Digilent Adept USB Device (Interface 0)`，而不是 `Digilent Adept USB Device (Interface 1)`，否則可能會導致燒錄失敗。
@@ -93,7 +93,7 @@ Bus device vid:pid       probe_type manufacturer serial       product
 ```
 
 :::info
-如果你的終端機中出現以下訊息，請檢查是否已經替換 USB 驅動程式，或是檢查 CMOD-A7 開發板是否已經正確連接到電腦上。
+如果你的終端機中出現以下訊息，請檢查是否已經替換 USB 驅動程式，或是檢查 Cmod-A7 開發板是否已經正確連接到電腦上。
 ```
 empty
 Error: can't open device with vid:vid = 0x0403:0x6010. Error code -5 Entity not found
@@ -118,7 +118,7 @@ index 0:
         irlength 6
 ```
 
-接著就可以嘗試將 Bitstream 燒錄至 CMOD-A7 開發板上：
+接著就可以嘗試將 Bitstream 燒錄至 Cmod-A7 開發板上：
 ```bash
 openFPGALoader -b cmoda7_35t release/boot_srec.bit
 ```
@@ -134,4 +134,4 @@ openFPGALoader -b cmoda7_35t -f --verify release/boot_srec.bit
 :::
 
 ## 四、結語
-以上就是在不使用 Vitis 的情況下，將 Bitstream 燒錄至 CMOD-A7 開發板上的教學，透過 OpenFPGALoader 工具，我們可以輕鬆地將 Bitstream 燒錄至 FPGA 中，並且可以選擇將 Bitstream 燒錄至 SPI Flash 中，讓 FPGA 在每次上電時自動載入 Bitstream，這樣就可以在不使用 Vitis 的情況下，快速地將 Bitstream 燒錄至 CMOD-A7 開發板上，並且可以在每次上電時自動載入 Bitstream，方便我們進行開發與測試。
+以上就是在不使用 Vitis 的情況下，將 Bitstream 燒錄至 Cmod-A7 開發板上的教學，透過 OpenFPGALoader 工具，我們可以輕鬆地將 Bitstream 燒錄至 FPGA 中，並且可以選擇將 Bitstream 燒錄至 SPI Flash 中，讓 FPGA 在每次上電時自動載入 Bitstream，這樣就可以在不使用 Vitis 的情況下，快速地將 Bitstream 燒錄至 Cmod-A7 開發板上，並且可以在每次上電時自動載入 Bitstream，方便我們進行開發與測試。
