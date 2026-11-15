@@ -37,7 +37,7 @@ const originals = JSON.stringify(await originalImages(article)).replace(/</g, "\
 const showToc = headings.some((h) => h.depth >= 2 && h.depth <= 3);
 ---
 
-<ArticleLayout title={title} description={summary} noindex={hidden}>
+<ArticleLayout title={title} description={summary} noindex={hidden} image={`/og/${article.id}.png`} ogType="article">
     <Fragment slot="head">
         <meta property="article:published_time" content={date.toISOString()} />
         <meta property="article:modified_time" content={modified.toISOString()} />

@@ -26,6 +26,12 @@ export const site = {
      * 建置時會輸出含雜湊的檔名，瀏覽器可長期快取。
      */
     avatar,
+    /**
+     * 分享圖（OG image，見 src/utils/ogImage.ts）使用的頭像原始檔，相對於專案根目錄。
+     * 建置時需直接讀取檔案，請與上方 avatar 指向同一張圖。
+     */
+    avatarFile: "src/assets/avatar.jfif",
+    intro: "拖了好久總算是把這個 Blog 弄起來了。",
 	aboutMe: "你好，我是莊智皓，目前就讀於成功大學資訊工程學系，平常的興趣兼專長是前後端、嵌入式系統、網通及基礎建設等相關領域，同時還會一點 3D 建模、PCB Layout 之類的技能。",
 
     /**

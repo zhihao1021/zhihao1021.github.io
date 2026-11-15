@@ -11,13 +11,16 @@ interface Props {
     description?: string;
     /** 要求搜尋引擎不要收錄此頁 */
     noindex?: boolean;
+    /** 分享圖路徑，見 BaseLayout */
+    image?: string;
+    ogType?: "website" | "article";
 }
 
-const { title, description, noindex } = Astro.props;
+const { title, description, noindex, image, ogType } = Astro.props;
 const hasToc = Astro.slots.has("toc");
 ---
 
-<BaseLayout title={title} description={description} noindex={noindex}>
+<BaseLayout title={title} description={description} noindex={noindex} image={image} ogType={ogType}>
     <slot name="head" slot="head" />
     <TopBar />
     <div class:list={["page", { "has-toc": hasToc }]}>
