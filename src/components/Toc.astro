@@ -1,0 +1,343 @@
+---
+/**
+ * 文章目錄（Table of Contents）：顯示 h2 / h3，並標示目前閱讀到的段落。
+ * - 寬螢幕：顯示在文章右側（由 ArticleLayout 的 toc 欄位放置）
+ * - 窄螢幕：右下角顯示懸浮按鈕，按下後在按鈕上方開啟懸浮框
+ */
+import type { MarkdownHeading } from "astro";
+
+interface Props {
+    headings: MarkdownHeading[];
+    /** 顯示的最小 / 最大標題層級 */
+    minDepth?: number;
+    maxDepth?: number;
+}
+
+const { headings, minDepth = 2, maxDepth = 3 } = Astro.props;
+const items = headings.filter((h) => h.depth >= minDepth && h.depth <= maxDepth);
+---
+
+{
+    items.length > 0 && (
+        <div class="toc-root" data-toc-root data-no-print>
+            <nav id="toc" class="toc" aria-label="文章目錄" data-toc>
+                <p class="toc-title">
+                    <span class="material-symbols-outlined" aria-hidden="true">
+                        toc
+                    </span>
+                    目錄
+                </p>
+                <ol>
+                    {items.map((h) => (
+                        <li class={`depth-${h.depth - minDepth}`}>
+                            <a href={`#${h.slug}`} data-toc-link={h.slug}>
+                                {h.text}
+                            </a>
+                        </li>
+                    ))}
+                </ol>
+                <a href="#top" class="to-top" data-to-top>
+                    <span class="material-symbols-outlined" aria-hidden="true">
+                        arrow_upward
+                    </span>
+                    回到頂端
+                </a>
+            </nav>
+
+            <button
+                type="button"
+                class="toc-fab"
+                data-toc-fab
+                aria-controls="toc"
+                aria-expanded="false"
+                aria-label="開啟目錄"
+                title="目錄"
+            >
+                <span class="material-symbols-outlined icon-open" aria-hidden="true">
+                    toc
+                </span>
+                <span class="material-symbols-outlined icon-close" aria-hidden="true">
+                    close
+                </span>
+            </button>
+        </div>
+    )
+}
+
+<script>
+    const root = document.querySelector<HTMLElement>("[data-toc-root]");
+
+    if (root) {
+        const toc = root.querySelector<HTMLElement>("[data-toc]")!;
+        const fab = root.querySelector<HTMLButtonElement>("[data-toc-fab]")!;
+        const links = [...toc.querySelectorAll<HTMLAnchorElement>("[data-toc-link]")];
+        const targets = links
+            .map((a) => document.getElementById(a.dataset.tocLink!))
+            .filter((el): el is HTMLElement => el !== null);
+
+        // ---- 目前段落標示 ----
+
+        // 點擊目錄後，維持標示被點的項目，直到使用者自行捲動
+        // （文章較短時，標題可能無法捲到最上方，自動判斷會標示錯誤）
+        let pinned: string | undefined;
+        const unpin = () => (pinned = undefined);
+        for (const type of ["wheel", "touchstart", "keydown", "mousedown"]) {
+            addEventListener(type, unpin, { passive: true });
+        }
+        for (const a of links) {
+            a.addEventListener("click", () => {
+                // mousedown 已先觸發 unpin，這裡再設定
+                pinned = a.dataset.tocLink;
+                setActive(pinned);
+                setOpen(false);
+            });
+        }
+
+        // 目前段落：最後一個捲過畫面上方（TopBar 下方一點）的標題
+        function update() {
+            if (pinned) return setActive(pinned);
+            const offset = parseFloat(getComputedStyle(document.documentElement).scrollPaddingTop) || 96;
+            let current: string | undefined = targets[0]?.id;
+            for (const el of targets) {
+                if (el.getBoundingClientRect().top - offset <= 1) current = el.id;
+                else break;
+            }
+            // 捲到底時，標示最後一個
+            if (innerHeight + scrollY >= document.documentElement.scrollHeight - 2) {
+                current = targets.at(-1)?.id;
+            }
+            setActive(current);
+        }
+
+        function setActive(current: string | undefined) {
+            for (const a of links) {
+                const active = a.dataset.tocLink === current;
+                a.classList.toggle("active", active);
+                if (active) a.setAttribute("aria-current", "true");
+                else a.removeAttribute("aria-current");
+            }
+        }
+
+        let ticking = false;
+        addEventListener(
+            "scroll",
+            () => {
+                if (ticking) return;
+                ticking = true;
+                requestAnimationFrame(() => {
+                    update();
+                    ticking = false;
+                });
+            },
+            { passive: true },
+        );
+        addEventListener("resize", update);
+        update();
+
+        toc.querySelector("[data-to-top]")?.addEventListener("click", (e) => {
+            e.preventDefault();
+            scrollTo({ top: 0 });
+            history.replaceState(null, "", location.pathname + location.search);
+            setOpen(false);
+        });
+
+        // ---- 窄螢幕：懸浮框 ----
+
+        function setOpen(open: boolean) {
+            root!.toggleAttribute("data-open", open);
+            fab.setAttribute("aria-expanded", String(open));
+            fab.setAttribute("aria-label", open ? "關閉目錄" : "開啟目錄");
+            if (open) {
+                // 讓目前段落出現在懸浮框可視範圍內
+                toc.querySelector(".active")?.scrollIntoView({ block: "nearest" });
+            }
+        }
+
+        fab.addEventListener("click", () => setOpen(!root.hasAttribute("data-open")));
+        document.addEventListener("click", (e) => {
+            if (!root.contains(e.target as Node)) setOpen(false);
+        });
+        document.addEventListener("keydown", (e) => {
+            if (e.key === "Escape" && root.hasAttribute("data-open")) {
+                setOpen(false);
+                fab.focus();
+            }
+        });
+        // 變回寬螢幕時重設
+        matchMedia("(min-width: 1101px)").addEventListener("change", (e) => {
+            if (e.matches) setOpen(false);
+        });
+    }
+</script>
+
+<style>
+    .toc {
+        font-size: 0.875rem;
+    }
+
+    .toc-title {
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+        margin: 0 0 0.75rem;
+        color: var(--text-muted);
+        font-size: 0.8rem;
+        letter-spacing: 0.08em;
+    }
+
+    .toc-title .material-symbols-outlined {
+        font-size: 1.15rem;
+    }
+
+    ol {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        border-left: 1px solid var(--line);
+    }
+
+    li a {
+        display: block;
+        margin-left: -1px;
+        padding: 0.3rem 0 0.3rem 0.9rem;
+        border-left: 2px solid transparent;
+        color: var(--text-muted);
+        line-height: 1.5;
+        text-decoration: none;
+        transition:
+            color 0.2s,
+            border-color 0.2s;
+    }
+
+    li.depth-1 a {
+        padding-left: 1.8rem;
+        font-size: 0.825rem;
+    }
+
+    li a:hover {
+        color: var(--text);
+    }
+
+    li a.active {
+        color: var(--accent);
+        border-left-color: var(--accent);
+        font-weight: 500;
+    }
+
+    .to-top {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.3rem;
+        margin-top: 1.25rem;
+        color: var(--text-muted);
+        font-size: 0.8rem;
+        text-decoration: none;
+    }
+
+    .to-top:hover {
+        color: var(--accent);
+    }
+
+    .to-top .material-symbols-outlined {
+        font-size: 1rem;
+    }
+
+    /* ---- 懸浮按鈕（寬螢幕隱藏） ---- */
+    .toc-fab {
+        display: none;
+    }
+
+    .icon-close,
+    .toc-root[data-open] .icon-open {
+        display: none;
+    }
+
+    .toc-root[data-open] .icon-close {
+        display: inline;
+    }
+
+    @media (max-width: 1100px) {
+        .toc-fab {
+            position: fixed;
+            right: 1.5rem;
+            bottom: 1.5rem;
+            z-index: 45;
+            display: inline-grid;
+            place-items: center;
+            width: 3rem;
+            height: 3rem;
+            padding: 0;
+            border: 1px solid var(--line);
+            border-radius: 50%;
+            background: var(--surface);
+            color: var(--text-muted);
+            box-shadow: var(--shadow);
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+
+        .toc-fab:hover,
+        .toc-root[data-open] .toc-fab {
+            color: var(--accent);
+        }
+
+        .toc-fab:focus-visible {
+            outline: 2px solid var(--accent);
+            outline-offset: 2px;
+        }
+
+        /* 目錄本身變成按鈕上方的懸浮框 */
+        .toc {
+            position: fixed;
+            right: 1.5rem;
+            bottom: calc(1.5rem + 3rem + 0.75rem);
+            z-index: 45;
+            width: min(300px, calc(100vw - 3rem));
+            max-height: min(60vh, 480px);
+            overflow-y: auto;
+            padding: 1rem 1.25rem;
+            border: 1px solid var(--line);
+            border-radius: 14px;
+            background: var(--surface);
+            box-shadow: var(--shadow);
+            transform-origin: bottom right;
+            /* 收合狀態 */
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(8px) scale(0.96);
+            transition:
+                opacity 0.18s ease,
+                transform 0.18s ease,
+                visibility 0s linear 0.18s;
+        }
+
+        .toc-root[data-open] .toc {
+            opacity: 1;
+            visibility: visible;
+            transform: none;
+            transition:
+                opacity 0.18s ease,
+                transform 0.18s ease;
+        }
+    }
+
+    @media (max-width: 768px) {
+        .toc-fab {
+            right: 1rem;
+            bottom: 1rem;
+        }
+
+        .toc {
+            right: 1rem;
+            bottom: calc(1rem + 3rem + 0.75rem);
+            width: min(300px, calc(100vw - 2rem));
+        }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .toc,
+        .toc-root[data-open] .toc {
+            transition: none;
+        }
+    }
+</style>

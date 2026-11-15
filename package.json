@@ -12,6 +12,18 @@
     "astro": "astro"
   },
   "dependencies": {
-    "astro": "^7.4.12"
+    "@astrojs/markdown-satteri": "0.4.10",
+    "@astrojs/react": "^7.1.9",
+    "@astrojs/sitemap": "^3.7.5",
+    "@types/react-dom": "^19.3.0",
+    "astro": "^7.4.12",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "satteri": "0.11.7"
+  },
+  "devDependencies": {
+    "@astrojs/check": "^0.9.12",
+    "@types/react": "^19.3.0",
+    "typescript": "^5.9.3"
   }
 }

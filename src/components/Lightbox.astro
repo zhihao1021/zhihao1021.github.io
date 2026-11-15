@@ -1,0 +1,298 @@
+---
+/**
+ * 圖片放大檢視（Lightbox）。
+ *
+ * - 套用對象：文章內文（.prose）中的圖片，以及任何加上 data-zoomable 的 <img>
+ * - 點擊圖片：懸浮顯示大圖，背景變暗並模糊
+ * - 關閉：按右上角關閉鈕、點擊背景、或按 Esc
+ * - 圖片需載入完成後才能放大（配合 ImagePlaceholder 的延後載入）
+ * 已放在 BaseLayout 中，全站生效。
+ */
+---
+
+<dialog class="lightbox" aria-label="圖片放大檢視" data-lightbox data-no-print>
+    <button type="button" class="lb-close" data-lightbox-close aria-label="關閉" title="關閉（Esc）">
+        <span class="material-symbols-outlined" aria-hidden="true">close</span>
+    </button>
+    <figure class="lb-figure">
+        <!-- 尺寸由 script 依原圖比例預先計算，載入前顯示佔位符（沿用 ImagePlaceholder 的 .img-ph 樣式） -->
+        <div class="lb-frame img-ph is-loading" data-sized data-lightbox-frame>
+            <img class="lb-img" alt="" data-lightbox-img data-no-placeholder />
+        </div>
+        <figcaption class="lb-caption" data-lightbox-caption></figcaption>
+    </figure>
+</dialog>
+
+<script>
+    const SELECTOR = ".prose img, img[data-zoomable]";
+
+    const dialog = document.querySelector<HTMLDialogElement>("[data-lightbox]")!;
+    const frame = dialog.querySelector<HTMLElement>("[data-lightbox-frame]")!;
+    const big = dialog.querySelector<HTMLImageElement>("[data-lightbox-img]")!;
+    const caption = dialog.querySelector<HTMLElement>("[data-lightbox-caption]")!;
+
+    /** 目前放大中圖片的原始尺寸 */
+    let natural = { width: 0, height: 0 };
+
+    /** 依原圖比例與視窗大小計算顯示尺寸（不放大超過原尺寸），並固定在外框上 */
+    function fit() {
+        const { width, height } = natural;
+        if (!width || !height) return;
+        const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+        const maxW = Math.min(innerWidth * 0.92, 1600);
+        const maxH = innerHeight - 9 * rem; // 保留上方關閉鈕與下方說明文字的空間
+        const scale = Math.min(1, maxW / width, maxH / height);
+        frame.style.width = `${Math.round(width * scale)}px`;
+        frame.style.height = `${Math.round(height * scale)}px`;
+    }
+
+    function setFrameState(state: "is-loading" | "is-loaded" | "is-error") {
+        frame.classList.remove("is-loading", "is-loaded", "is-error");
+        frame.classList.add(state);
+    }
+
+    big.addEventListener("load", () => setFrameState("is-loaded"));
+    big.addEventListener("error", () => setFrameState("is-error"));
+    addEventListener("resize", () => dialog.open && fit());
+
+    function zoomable(el: EventTarget | null): HTMLImageElement | null {
+        if (!(el instanceof HTMLImageElement) || dialog.contains(el)) return null;
+        if (!el.matches(SELECTOR)) return null;
+        // 尚未載入完成（佔位中）不放大
+        if (!el.complete || el.naturalWidth === 0) return null;
+        return el;
+    }
+
+    /**
+     * 本地圖片的原始檔對照表（由文章頁面輸出，key 為 <img data-original>）。
+     * 頁面上顯示的是縮小 / 壓縮後的版本，放大時改用原始檔。
+     */
+    type Original = { src: string; width: number; height: number };
+    let originals: Record<string, Original> = {};
+    try {
+        originals = JSON.parse(document.querySelector("[data-original-images]")?.textContent || "{}");
+    } catch {}
+
+    function open(img: HTMLImageElement) {
+        const original = img.dataset.original ? originals[img.dataset.original] : undefined;
+        // 先決定外框尺寸並顯示佔位，再設定 src，避免圖片解碼前尺寸為 0 造成位移
+        natural = original
+            ? { width: original.width, height: original.height }
+            : { width: img.naturalWidth, height: img.naturalHeight };
+        fit();
+        setFrameState("is-loading");
+        // 原始檔不存在時（遠端、public/ 圖片）使用頁面上的圖片網址
+        big.src = original?.src ?? (img.currentSrc || img.src);
+        // 已在快取且同步可用時，直接顯示
+        if (big.complete && big.naturalWidth > 0) setFrameState("is-loaded");
+        big.alt = img.alt;
+        caption.textContent = img.alt;
+        caption.hidden = !img.alt;
+        dialog.classList.remove("is-closing");
+        dialog.showModal();
+    }
+
+    function close() {
+        if (!dialog.open || dialog.classList.contains("is-closing")) return;
+        const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+        if (reduce) return dialog.close();
+        dialog.classList.add("is-closing");
+        // 等關閉動畫結束（加上保險計時，避免動畫事件沒有觸發時卡住）
+        let done = false;
+        const onEnd = (e: AnimationEvent) => e.target === dialog && finish();
+        const finish = () => {
+            if (done) return;
+            done = true;
+            dialog.removeEventListener("animationend", onEnd);
+            dialog.classList.remove("is-closing");
+            dialog.close();
+        };
+        dialog.addEventListener("animationend", onEnd);
+        setTimeout(finish, 300);
+    }
+
+    // 事件委派：之後才載入完成的圖片也適用
+    document.addEventListener("click", (e) => {
+        const img = zoomable(e.target);
+        if (img) open(img);
+    });
+
+    // 鍵盤：可聚焦的圖片按 Enter 放大
+    document.querySelectorAll<HTMLImageElement>(SELECTOR).forEach((img) => {
+        if (dialog.contains(img)) return;
+        img.tabIndex = 0;
+        img.addEventListener("keydown", (e) => {
+            if (e.key === "Enter" && zoomable(img)) open(img);
+        });
+    });
+
+    dialog.querySelector("[data-lightbox-close]")!.addEventListener("click", close);
+    // 點擊背景（圖片與佔位外框以外的區域）關閉
+    dialog.addEventListener("click", (e) => {
+        if (!frame.contains(e.target as Node) && !(e.target as Element).closest("[data-lightbox-close]")) close();
+    });
+    // Esc：改用自己的關閉動畫
+    dialog.addEventListener("cancel", (e) => {
+        e.preventDefault();
+        close();
+    });
+    dialog.addEventListener("close", () => big.removeAttribute("src"));
+</script>
+
+<style is:global>
+    /* 可放大的圖片 */
+    :is(.prose img, img[data-zoomable]) {
+        cursor: zoom-in;
+    }
+
+    :is(.prose img, img[data-zoomable]):focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 3px;
+    }
+
+    /* 佔位中的圖片不顯示放大游標 */
+    .img-ph.is-loading > img {
+        cursor: default;
+    }
+
+    /* 開啟時鎖定頁面捲動 */
+    html:has(.lightbox[open]) {
+        overflow: hidden;
+    }
+
+    .lightbox {
+        width: 100vw;
+        max-width: none;
+        height: 100dvh;
+        max-height: none;
+        margin: 0;
+        padding: 0;
+        border: none;
+        background: transparent;
+        overflow: hidden;
+    }
+
+    .lightbox[open] {
+        display: grid;
+        place-items: center;
+        animation: lb-fade 0.28s ease-out;
+    }
+
+    .lightbox::backdrop {
+        background: rgb(10 12 14 / 0.72);
+        backdrop-filter: blur(8px);
+        animation: lb-fade 0.28s ease-out;
+    }
+
+    /* 關閉動畫需使用不同的 keyframes 名稱，瀏覽器才會重新播放 */
+    .lightbox.is-closing,
+    .lightbox.is-closing::backdrop {
+        animation: lb-fade-out 0.2s ease-in forwards;
+    }
+
+    .lb-figure {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.75rem;
+        margin: 0;
+        padding: 4rem 1.5rem 1.5rem;
+        max-width: 100%;
+        max-height: 100%;
+    }
+
+    /* 外框：寬高由 script 依原圖比例設定，載入前即佔好位置 */
+    .lb-frame {
+        display: block;
+        flex-shrink: 0;
+        box-shadow: 0 20px 60px rgb(0 0 0 / 0.5);
+        animation: lb-zoom 0.36s cubic-bezier(0.2, 0.8, 0.2, 1);
+    }
+
+    /* 深色背景上的佔位色 */
+    .lb-frame.img-ph.is-loading {
+        background: rgb(255 255 255 / 0.1);
+        --shimmer: rgb(255 255 255 / 0.12);
+    }
+
+    .lightbox.is-closing .lb-frame {
+        animation: lb-zoom-out 0.2s ease-in forwards;
+    }
+
+    .lb-img {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        cursor: default;
+    }
+
+    .lb-caption {
+        color: rgb(255 255 255 / 0.85);
+        font-size: 0.9rem;
+        text-align: center;
+    }
+
+    .lb-close {
+        position: fixed;
+        top: 1rem;
+        right: 1rem;
+        display: grid;
+        place-items: center;
+        width: 2.75rem;
+        height: 2.75rem;
+        padding: 0;
+        border: 1px solid rgb(255 255 255 / 0.2);
+        border-radius: 50%;
+        background: rgb(255 255 255 / 0.1);
+        color: #fff;
+        cursor: pointer;
+        transition: background-color 0.2s;
+    }
+
+    .lb-close:hover {
+        background: rgb(255 255 255 / 0.22);
+    }
+
+    .lb-close:focus-visible {
+        outline: 2px solid #fff;
+        outline-offset: 2px;
+    }
+
+    @keyframes lb-fade {
+        from {
+            opacity: 0;
+        }
+    }
+
+    @keyframes lb-zoom {
+        from {
+            opacity: 0;
+            transform: scale(0.9);
+        }
+    }
+
+    @keyframes lb-fade-out {
+        to {
+            opacity: 0;
+        }
+    }
+
+    @keyframes lb-zoom-out {
+        to {
+            opacity: 0;
+            transform: scale(0.9);
+        }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .lightbox[open],
+        .lightbox::backdrop,
+        .lb-frame {
+            animation: none;
+        }
+
+        .lb-img {
+            transition: none;
+        }
+    }
+</style>

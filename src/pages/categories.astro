@@ -1,0 +1,101 @@
+---
+import SidebarLayout from "../layouts/SidebarLayout.astro";
+import CategoryNode from "../components/CategoryNode.astro";
+import { getArticles } from "../utils/articles";
+import { buildCategoryTree, countCategories, type CategoryNode as Node } from "../utils/categories";
+
+const root = buildCategoryTree(await getArticles());
+const total = countCategories(root);
+
+// 根目錄的文章以「未分類」節點顯示在最後
+const top: Node[] = [...root.children];
+if (root.articles.length > 0) {
+    top.push({ ...root, children: [], total: root.articles.length });
+}
+---
+
+<SidebarLayout title="Category">
+    <header class="page-head">
+        <h2>Category</h2>
+        <p>共 {total} 個分類</p>
+    </header>
+
+    <div class="toolbar">
+        <button type="button" data-expand="all">
+            <span class="material-symbols-outlined" aria-hidden="true">unfold_more</span>
+            全部展開
+        </button>
+        <button type="button" data-expand="none">
+            <span class="material-symbols-outlined" aria-hidden="true">unfold_less</span>
+            全部收合
+        </button>
+    </div>
+
+    <div class="tree">
+        {top.map((node) => <CategoryNode node={node} />)}
+    </div>
+</SidebarLayout>
+
+<script>
+    const all = () => document.querySelectorAll<HTMLDetailsElement>(".tree details");
+
+    document.querySelectorAll<HTMLButtonElement>("[data-expand]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+            const open = btn.dataset.expand === "all";
+            all().forEach((d) => (d.open = open));
+        });
+    });
+
+    // 從文章點進來（#cat-xxx）時，展開該類別與所有上層並捲動到該處
+    function revealHash() {
+        const id = decodeURIComponent(location.hash.slice(1));
+        const target = id && document.getElementById(id);
+        if (!(target instanceof HTMLDetailsElement)) return;
+        for (let el: Element | null = target; el; el = el.parentElement?.closest("details") ?? null) {
+            (el as HTMLDetailsElement).open = true;
+        }
+        target.scrollIntoView({ block: "start" });
+    }
+
+    revealHash();
+    window.addEventListener("hashchange", revealHash);
+</script>
+
+<style>
+    .toolbar {
+        display: flex;
+        justify-content: flex-end;
+        gap: 0.5rem;
+        margin: 1.25rem 0 0.5rem;
+    }
+
+    .toolbar button {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.3rem;
+        padding: 0.3rem 0.75rem;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        background: transparent;
+        color: var(--text-muted);
+        font: inherit;
+        font-size: 0.8rem;
+        cursor: pointer;
+        transition:
+            color 0.2s,
+            border-color 0.2s;
+    }
+
+    .toolbar button:hover {
+        color: var(--accent);
+        border-color: var(--accent);
+    }
+
+    .toolbar .material-symbols-outlined {
+        font-size: 1.1rem;
+    }
+
+    .tree {
+        border-top: 1px solid var(--line);
+    }
+</style>

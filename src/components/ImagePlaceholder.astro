@@ -1,0 +1,163 @@
+---
+/**
+ * 圖片延後載入與佔位符。
+ *
+ * 流程：
+ * 1. src/middleware.ts 將所有 <img> 的 src 改為 data-src，並包上佔位符（灰色 + 掃光動畫）
+ * 2. 頁面其他資源（CSS、JS、字體）都載入完成後，這裡的腳本才還原 src 開始下載圖片
+ * 3. 圖片載入完成後淡入
+ *
+ * - 套用到全站所有 <img>；不想處理的圖片加上 data-no-placeholder
+ * - 圖片有 width / height 屬性時，佔位區塊會是正確的比例；沒有時先以 16:9 佔位
+ * - 保留 loading="lazy"：還原 src 後，畫面外的圖片仍會等捲動接近時才下載
+ * - loading="eager" 的圖片（例如頭像）不延後、不隱藏：佔位符只墊在背後，
+ *   已快取時第一個畫面就會顯示，不會每次切換頁面都重新出現佔位符
+ * 已放在 BaseLayout 中，全站生效。
+ */
+---
+
+<script>
+    const images = [...document.querySelectorAll<HTMLImageElement>("img[data-ph]")];
+
+    // 佔位區塊沿用圖片的圓角（例如圓形頭像）
+    for (const img of images) {
+        const radius = getComputedStyle(img).borderRadius;
+        if (radius && radius !== "0px") img.parentElement!.style.borderRadius = radius;
+    }
+
+    function watch(img: HTMLImageElement) {
+        const wrap = img.parentElement!;
+        const finish = (state: "is-loaded" | "is-error") => {
+            wrap.classList.remove("is-loading");
+            wrap.classList.add(state);
+        };
+        img.addEventListener("load", () => finish("is-loaded"), { once: true });
+        img.addEventListener("error", () => finish("is-error"), { once: true });
+    }
+
+    // eager：src 已存在，只需在載入完成時停止佔位動畫
+    for (const img of images.filter((i) => i.hasAttribute("data-eager"))) {
+        if (img.complete && img.naturalWidth > 0) {
+            img.parentElement!.classList.replace("is-loading", "is-loaded");
+        } else {
+            watch(img);
+        }
+    }
+
+    function start(img: HTMLImageElement) {
+        watch(img);
+        if (img.dataset.srcset) img.srcset = img.dataset.srcset;
+        if (img.dataset.src) img.src = img.dataset.src;
+        img.removeAttribute("data-src");
+        img.removeAttribute("data-srcset");
+    }
+
+    // 等待其他資源（load 事件）與字體都完成後才開始下載圖片
+    const pageLoaded =
+        document.readyState === "complete"
+            ? Promise.resolve()
+            : new Promise<void>((resolve) => addEventListener("load", () => resolve(), { once: true }));
+
+    pageLoaded
+        .then(() => document.fonts.ready)
+        .then(() => images.filter((i) => !i.hasAttribute("data-eager")).forEach(start));
+
+    // 列印前：立即開始下載所有圖片（含尚未開始的延後載入與畫面外的 lazy 圖片），避免印出空白
+    addEventListener("beforeprint", () => {
+        for (const img of images) {
+            img.loading = "eager";
+            if (img.dataset.src || img.dataset.srcset) start(img);
+        }
+    });
+</script>
+
+<style is:global>
+    .img-ph {
+        position: relative;
+        display: inline-block;
+        max-width: 100%;
+        overflow: hidden;
+        vertical-align: middle;
+        background: var(--placeholder);
+        /* 建立獨立的堆疊環境，下方 img 的 z-index 不影響頁面其他元素 */
+        isolation: isolate;
+    }
+
+    /* 圖片疊在掃光動畫（::after）之上：一旦圖片畫出來就會蓋住佔位符 */
+    .img-ph > img {
+        position: relative;
+        z-index: 1;
+        display: block;
+        transition: opacity 0.45s ease;
+    }
+
+    /* 延後載入的圖片：完成前隱藏（包含尚無 src 時可能出現的替代文字），完成後淡入 */
+    .img-ph:not(.is-loaded):not(.is-error) > img:not([data-eager]) {
+        opacity: 0;
+    }
+
+    /* eager 圖片不隱藏也不淡入：佔位符墊在背後，圖片解碼後直接蓋上 */
+    .img-ph > img[data-eager] {
+        transition: none;
+    }
+
+    /* 沒有尺寸資訊的圖片，載入前先佔 16:9 的空間 */
+    .img-ph.is-loading:not([data-sized]) {
+        width: 100%;
+        aspect-ratio: 16 / 9;
+    }
+
+    /* 掃光動畫 */
+    .img-ph.is-loading::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(100deg, transparent 20%, var(--shimmer) 50%, transparent 80%);
+        transform: translateX(-100%);
+        animation: img-ph-shimmer 1.6s ease-in-out infinite;
+    }
+
+    @keyframes img-ph-shimmer {
+        to {
+            transform: translateX(100%);
+        }
+    }
+
+    .img-ph.is-loaded,
+    .img-ph.is-error {
+        background: transparent;
+    }
+
+    /* 文章內的圖片：獨立一行、依寬度縮放 */
+    .prose .img-ph {
+        display: block;
+        width: fit-content;
+        margin: 1.5rem 0;
+        border-radius: 10px;
+    }
+
+    .prose .img-ph > img {
+        max-width: 100%;
+        height: auto;
+    }
+
+    /* 停用 JS：不顯示佔位符，改顯示 <noscript> 中的原始圖片 */
+    html:not(.js) .img-ph {
+        background: none;
+    }
+
+    html:not(.js) .img-ph::after,
+    html:not(.js) .img-ph > img[data-ph]:not([data-eager]) {
+        display: none;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .img-ph.is-loading::after {
+            animation: none;
+        }
+
+        .img-ph > img {
+            transition: none;
+        }
+    }
+</style>

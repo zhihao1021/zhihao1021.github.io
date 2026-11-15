@@ -1,0 +1,31 @@
+---
+/**
+ * 頁尾版權標註（BaseLayout 中所有頁面共用），內容在 src/config/site.ts 的 copyright 設定。
+ */
+import { site } from "../config/site";
+
+const { holder, since, notice } = site.copyright;
+// 依網站時區取得建置當下的年份
+const year = Number(new Intl.DateTimeFormat("en", { timeZone: site.timezone, year: "numeric" }).format(new Date()));
+const years = since < year ? `${since}–${year}` : String(year);
+---
+
+<footer class="site-footer" data-no-print>
+    <p>{`© ${years} ${holder}. ${notice}`.trim()}</p>
+</footer>
+
+<style>
+    .site-footer {
+        display: grid;
+        place-items: center;
+        height: var(--footer-height);
+        padding: 0 1.5rem;
+        color: var(--text-muted);
+        font-size: 0.8rem;
+        text-align: center;
+    }
+
+    p {
+        margin: 0;
+    }
+</style>

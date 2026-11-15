@@ -1,0 +1,148 @@
+---
+/**
+ * 右下角的「複製分享連結」懸浮按鈕（放在 ArticleLayout 內使用）。
+ *
+ * - 寬螢幕：位於目錄欄（或文章卡片）右側；螢幕很寬時跟著內容，不會被推到畫面最右邊
+ * - 窄螢幕：固定在右下角，有目錄時位於目錄按鈕上方
+ */
+interface Props {
+    /** 要複製的網址，預設為此頁的正式網址（astro.config.mjs 的 site） */
+    url?: string;
+}
+
+const { url = new URL(Astro.url.pathname, Astro.site ?? Astro.url).href } = Astro.props;
+---
+
+<button
+    type="button"
+    class="share-fab"
+    data-share-fab
+    data-url={url}
+    data-no-print
+    aria-label="複製分享連結"
+    title="複製分享連結"
+>
+    <span class="material-symbols-outlined icon-share" aria-hidden="true">share</span>
+    <span class="material-symbols-outlined icon-done" aria-hidden="true">check</span>
+    <span class="share-tip" role="status" aria-live="polite"></span>
+</button>
+
+<script>
+    import { copyText } from "../utils/clipboard";
+
+    const SHOW_MS = 1800;
+
+    for (const button of document.querySelectorAll<HTMLButtonElement>("[data-share-fab]")) {
+        const tip = button.querySelector<HTMLElement>(".share-tip")!;
+        let timer: ReturnType<typeof setTimeout> | undefined;
+
+        button.addEventListener("click", async () => {
+            const ok = await copyText(button.dataset.url || location.href);
+            button.dataset.copyState = ok ? "copied" : "failed";
+            tip.textContent = ok ? "已複製連結" : "複製失敗";
+            clearTimeout(timer);
+            timer = setTimeout(() => {
+                delete button.dataset.copyState;
+                tip.textContent = "";
+            }, SHOW_MS);
+        });
+    }
+</script>
+
+<style>
+    /*
+     * --page-max 由 ArticleLayout 的 .page 提供（內容區總寬度）。
+     * 寬螢幕時放在內容右緣外側 1.5rem；空間不夠時貼齊畫面右側 1.5rem。
+     * （fixed 元素的 right 百分比以視窗寬度為準，不含捲軸）
+     */
+    .share-fab {
+        --size: 3rem;
+        --edge: 1.5rem;
+        position: fixed;
+        right: max(var(--edge), calc((100% - var(--page-max, 1260px)) / 2 - var(--size) - 1.5rem));
+        bottom: var(--edge);
+        z-index: 44; /* 低於目錄懸浮框（45），展開目錄時會被蓋住 */
+        display: inline-grid;
+        place-items: center;
+        width: var(--size);
+        height: var(--size);
+        padding: 0;
+        border: 1px solid var(--line);
+        border-radius: 50%;
+        background: var(--surface);
+        color: var(--text-muted);
+        box-shadow: var(--shadow);
+        cursor: pointer;
+        transition: color 0.2s;
+    }
+
+    .share-fab:hover {
+        color: var(--accent);
+    }
+
+    .share-fab:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+    }
+
+    .icon-done,
+    .share-fab[data-copy-state] .icon-share {
+        display: none;
+    }
+
+    .share-fab[data-copy-state] .icon-done {
+        display: inline;
+    }
+
+    .share-fab[data-copy-state="copied"] {
+        color: var(--accent);
+    }
+
+    /* 按鈕左側的提示 */
+    .share-tip {
+        position: absolute;
+        right: calc(100% + 0.6rem);
+        top: 50%;
+        padding: 0.3rem 0.7rem;
+        border-radius: 6px;
+        background: var(--text);
+        color: var(--surface);
+        font-size: 0.8rem;
+        line-height: 1.5;
+        white-space: nowrap;
+        pointer-events: none;
+        opacity: 0;
+        transform: translate(4px, -50%);
+        transition:
+            opacity 0.15s ease,
+            transform 0.15s ease;
+    }
+
+    .share-fab[data-copy-state] .share-tip {
+        opacity: 1;
+        transform: translate(0, -50%);
+    }
+
+    /* 窄螢幕：目錄改為懸浮按鈕（Toc.astro），分享按鈕放在它上方 */
+    @media (max-width: 1100px) {
+        .share-fab {
+            right: var(--edge);
+        }
+
+        :global(.page.has-toc) .share-fab {
+            bottom: calc(var(--edge) + var(--size) + 0.75rem);
+        }
+    }
+
+    @media (max-width: 768px) {
+        .share-fab {
+            --edge: 1rem;
+        }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .share-tip {
+            transition: none;
+        }
+    }
+</style>

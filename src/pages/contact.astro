@@ -1,0 +1,74 @@
+---
+import SidebarLayout from "../layouts/SidebarLayout.astro";
+
+// 聯絡方式：自行替換成真實的連結
+const contacts = [
+    { icon: "mail", label: "Email", value: "contact@chih-hao.xyz", href: "mailto:contact@chih-hao.xyz" },
+    { icon: "code", label: "GitHub", value: "zhihao1021", href: "https://github.com/zhihao1021" },
+    { icon: "public", label: "Website", value: "www.chih-hao.xyz", href: "https://www.chih-hao.xyz" },
+];
+---
+
+<SidebarLayout title="Contact">
+    <header class="page-head">
+        <h2>Contact</h2>
+        <p>有任何問題或合作想法，歡迎透過以下方式聯絡我。</p>
+    </header>
+
+    <ul class="list">
+        {
+            contacts.map((c) => (
+                <li>
+                    <a
+                        href={c.href}
+                        class="row"
+                        {...(c.href.startsWith("http") && { target: "_blank", rel: "noopener noreferrer" })}
+                    >
+                        <span class="material-symbols-outlined" aria-hidden="true">{c.icon}</span>
+                        <span class="label">{c.label}</span>
+                        <span class="value">{c.value}</span>
+                    </a>
+                </li>
+            ))
+        }
+    </ul>
+</SidebarLayout>
+
+<style>
+    .list {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+    }
+
+    .list li {
+        border-bottom: 1px solid var(--line);
+    }
+
+    .row {
+        display: grid;
+        grid-template-columns: auto 6rem 1fr;
+        align-items: center;
+        gap: 1rem;
+        padding: 1rem 0.5rem;
+        color: var(--text);
+        text-decoration: none;
+        transition: background-color 0.2s;
+    }
+
+    .row:hover {
+        background-color: var(--hover);
+    }
+
+    .label {
+        color: var(--text-muted);
+    }
+
+    .value {
+        overflow-wrap: anywhere;
+    }
+
+    .row:hover .value {
+        color: var(--accent);
+    }
+</style>

@@ -1,0 +1,211 @@
+---
+/**
+ * 最外層 HTML 骨架：<head>、字體、色彩變數與主題初始化。
+ * 頁面請使用 SidebarLayout 或 ArticleLayout，而不是直接使用這個。
+ */
+import { site } from "../config/site";
+import Footer from "../components/Footer.astro";
+import ImagePlaceholder from "../components/ImagePlaceholder.astro";
+import Lightbox from "../components/Lightbox.astro";
+import "../styles/print.css";
+
+interface Props {
+    /** 分頁標題，未提供時使用網站標題 */
+    title?: string;
+    description?: string;
+    /** 要求搜尋引擎不要收錄此頁 */
+    noindex?: boolean;
+}
+
+const { title, description = site.tagline, noindex = false } = Astro.props;
+const pageTitle = title ? `${title} | ${site.title}` : site.title;
+---
+
+<!doctype html>
+<html lang="zh-Hant">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="description" content={description} />
+        <meta name="generator" content={Astro.generator} />
+        {noindex && <meta name="robots" content="noindex" />}
+        <link rel="icon" type="image/png" sizes="32x32" href="/favicon.png" />
+        <link rel="icon" type="image/png" sizes="48x48" href="/favicon_48.png" />
+        <link rel="apple-touch-icon" sizes="180x180" href="/favicon_180.png">
+        <link rel="icon" href="/favicon.ico" />
+        <link rel="sitemap" href="/sitemap-index.xml" />
+        <title>{pageTitle}</title>
+        <slot name="head" />
+
+        <script is:inline>
+            (() => {
+                let theme;
+                try { theme = localStorage.getItem("theme"); } catch {}
+                if (theme !== "light" && theme !== "dark") { theme = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"; }
+                document.documentElement.dataset.theme = theme;
+                document.documentElement.classList.add("js");
+            })();
+        </script>
+
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+        <link
+            rel="stylesheet"
+            href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300..700&display=swap"
+        />
+        <link
+            rel="stylesheet"
+            href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,200..400,0,0&display=block"
+        />
+        <script async src="https://www.googletagmanager.com/gtm.js?id=GTM-K6KR9WZ6"></script>
+        <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        </script>
+    </head>
+    <body>
+        <slot />
+        <Footer />
+        <ImagePlaceholder />
+        <Lightbox />
+    </body>
+</html>
+
+<style is:global>
+    :root {
+        /* 頁尾高度：各版面的最小高度會扣掉它，讓頁尾在內容不足一頁時也貼齊畫面底部 */
+        --footer-height: 4rem;
+        --bg: #eef0f2;
+        --surface: #ffffff;
+        --text: #1f1f1f;
+        --text-muted: #6b6b6b;
+        --line: #e6e6e4;
+        --hover: #f4f4f2;
+        --accent: #3d6b8f;
+        --shadow: 0 1px 2px rgb(20 30 40 / 0.04), 0 12px 40px -8px rgb(20 30 40 / 0.14);
+        /* 圖片佔位符 */
+        --placeholder: #e6e8eb;
+        --shimmer: rgb(255 255 255 / 0.55);
+
+        /* 主要區塊（卡片）最大寬度與側邊欄寬度 */
+        --frame-width: 1420px;
+        --sidebar-width: 290px;
+        color-scheme: light;
+    }
+
+    /* 深色：沒有 JS 時跟隨系統；有 JS 時以 data-theme 為準 */
+    @media (prefers-color-scheme: dark) {
+        :root:not([data-theme="light"]) {
+            --bg: #0f1012;
+            --surface: #18191b;
+            --text: #e8e8e6;
+            --text-muted: #9a9a98;
+            --line: #2a2b2e;
+            --hover: #212225;
+            --accent: #8fb6d6;
+            --shadow: 0 1px 2px rgb(0 0 0 / 0.3), 0 16px 48px -8px rgb(0 0 0 / 0.6);
+            --placeholder: #26282b;
+            --shimmer: rgb(255 255 255 / 0.06);
+            color-scheme: dark;
+        }
+    }
+
+    :root[data-theme="dark"] {
+        --bg: #0f1012;
+        --surface: #18191b;
+        --text: #e8e8e6;
+        --text-muted: #9a9a98;
+        --line: #2a2b2e;
+        --hover: #212225;
+        --accent: #8fb6d6;
+        --shadow: 0 1px 2px rgb(0 0 0 / 0.3), 0 16px 48px -8px rgb(0 0 0 / 0.6);
+        --placeholder: #26282b;
+        --shimmer: rgb(255 255 255 / 0.06);
+        color-scheme: dark;
+    }
+
+    *,
+    *::before,
+    *::after {
+        box-sizing: border-box;
+    }
+
+    html,
+    body {
+        margin: 0;
+    }
+
+    body {
+        /* 避免子元素的 margin 穿透 body 造成多餘捲軸 */
+        display: flow-root;
+        min-height: 100vh;
+        min-height: 100dvh;
+        background: var(--bg);
+        color: var(--text);
+        font-family: "Noto Sans TC", system-ui, -apple-system, "Segoe UI", sans-serif;
+        font-weight: 400;
+        line-height: 1.75;
+        -webkit-font-smoothing: antialiased;
+    }
+
+    a {
+        color: var(--accent);
+    }
+
+    .material-symbols-outlined {
+        font-variation-settings:
+            "FILL" 0,
+            "wght" 400,
+            "GRAD" 0,
+            "opsz" 24;
+        user-select: none;
+    }
+
+    /* 共用：浮起的主要區塊 */
+    .card {
+        background: var(--surface);
+        border-radius: 18px;
+        box-shadow: var(--shadow);
+    }
+
+    /* 共用：頁面標題 */
+    .page-head {
+        padding-bottom: 1.5rem;
+        border-bottom: 1px solid var(--line);
+    }
+
+    .page-head h2 {
+        margin: 0;
+        font-size: 2rem;
+        font-weight: 500;
+        letter-spacing: 0.04em;
+    }
+
+    .page-head p {
+        margin: 0.25rem 0 0;
+        color: var(--text-muted);
+        font-size: 0.9rem;
+    }
+
+    /* 共用：標籤膠囊 */
+    .chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.3rem;
+        padding: 0.15rem 0.7rem;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        color: var(--text-muted);
+        font-size: 0.8rem;
+        text-decoration: none;
+        transition:
+            color 0.2s,
+            border-color 0.2s;
+    }
+
+    a.chip:hover {
+        color: var(--accent);
+        border-color: var(--accent);
+    }
+</style>

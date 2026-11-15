@@ -1,16 +1,100 @@
 ---
+import SidebarLayout from "../layouts/SidebarLayout.astro";
+import ArticleList from "../components/ArticleList.astro";
+import { site } from "../config/site";
+import { getArticles } from "../utils/articles";
+
+const recent = (await getArticles()).slice(0, 10);
 ---
 
-<html lang="en">
-	<head>
-		<meta charset="utf-8" />
-		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-		<link rel="icon" href="/favicon.ico" />
-		<meta name="viewport" content="width=device-width" />
-		<meta name="generator" content={Astro.generator} />
-		<title>Astro</title>
-	</head>
-	<body>
-		<h1>Astro</h1>
-	</body>
-</html>
+<SidebarLayout>
+    <section class="hero">
+        <p class="eyebrow">Hello, I'm</p>
+        <h2 class="title">CHIH-HAO</h2>
+        <p class="intro">拖了好久總算是把這個 Blog 弄起來了。</p>
+    </section>
+
+    <section class="section">
+        <div class="section-head">
+            <h3>About Me</h3>
+        </div>
+        <p class="context">{site.aboutMe}</p>
+    </section>
+
+    <section class="section">
+        <div class="section-head">
+            <h3>最新文章</h3>
+            <a href="/articles" class="more">
+                全部文章
+                <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span>
+            </a>
+        </div>
+        <ArticleList articles={recent} compact />
+    </section>
+</SidebarLayout>
+
+<style>
+    .hero {
+        padding-bottom: 3rem;
+        border-bottom: 1px solid var(--line);
+    }
+
+    .eyebrow {
+        margin: 0;
+        color: var(--text-muted);
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        font-size: 0.8rem;
+    }
+
+    .title {
+        margin: 0.25rem 0 1rem;
+        font-size: clamp(2.25rem, 6vw, 3.5rem);
+        font-weight: 500;
+        letter-spacing: 0.04em;
+        line-height: 1.2;
+    }
+
+    .intro {
+        margin: 0;
+        max-width: 36em;
+        color: var(--text-muted);
+    }
+
+    .context {
+        margin: 0;
+        font-size: 1rem;
+        text-indent: 2em;
+    }
+
+    .section {
+        margin-top: 3rem;
+    }
+
+    .section-head {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        margin-bottom: 0.5rem;
+    }
+
+    .section-head h3 {
+        margin: 0;
+        font-size: 1.5rem;
+        font-weight: 500;
+        letter-spacing: 0.06em;
+    }
+
+    .more {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        /* font-size: 0.875rem; */
+        font-size: 1rem;
+        text-decoration: none;
+    }
+
+    .more .material-symbols-outlined {
+        font-size: 1.1rem;
+    }
+</style>

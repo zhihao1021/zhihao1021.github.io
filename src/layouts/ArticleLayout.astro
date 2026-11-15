@@ -1,0 +1,127 @@
+---
+/**
+ * 文章內頁：上方 TopBar（標題 / nav / 搜尋 / 明暗切換），下方為置中的懸浮卡片。
+ * 傳入 slot="toc" 時，卡片右側會顯示跟隨捲動的目錄（窄螢幕改為右下角懸浮按鈕）。
+ */
+import BaseLayout from "./BaseLayout.astro";
+import TopBar from "../components/TopBar.astro";
+
+interface Props {
+    title?: string;
+    description?: string;
+    /** 要求搜尋引擎不要收錄此頁 */
+    noindex?: boolean;
+}
+
+const { title, description, noindex } = Astro.props;
+const hasToc = Astro.slots.has("toc");
+---
+
+<BaseLayout title={title} description={description} noindex={noindex}>
+    <slot name="head" slot="head" />
+    <TopBar />
+    <div class:list={["page", { "has-toc": hasToc }]}>
+        <main class="frame card">
+            <slot />
+        </main>
+        {
+            hasToc && (
+                <aside class="toc-col" data-no-print>
+                    <div class="toc-sticky">
+                        <slot name="toc" />
+                    </div>
+                </aside>
+            )
+        }
+    </div>
+</BaseLayout>
+
+<style>
+    /* 錨點跳轉時，保留 TopBar 的高度 */
+    :global(html) {
+        scroll-padding-top: calc(3.75rem + 1.5rem);
+    }
+
+    @media (prefers-reduced-motion: no-preference) {
+        :global(html) {
+            scroll-behavior: smooth;
+        }
+    }
+
+    .page {
+        --content-width: 1260px;
+        --toc-width: 280px;
+        --page-gap: 2.5rem;
+        /* 內容區總寬度（ShareButton 依此定位） */
+        --page-max: var(--content-width);
+        display: grid;
+        grid-template-columns: minmax(0, var(--content-width));
+        justify-content: center;
+        gap: var(--page-gap);
+        width: calc(100% - 3rem);
+        /* 內容不足一頁時撐滿，讓頁尾貼齊畫面底部（扣掉 TopBar、上下間距與頁尾） */
+        min-height: calc(100dvh - 3.75rem - 1px - 5rem - var(--footer-height));
+        margin: 2.5rem auto;
+    }
+
+    .page.has-toc {
+        --page-max: calc(var(--content-width) + var(--page-gap) + var(--toc-width));
+        grid-template-columns: minmax(0, var(--content-width)) var(--toc-width);
+    }
+
+    .frame {
+        /* 卡片高度依內容，不隨 .page 的最小高度拉長（目錄欄仍需拉長，sticky 才有作用） */
+        align-self: start;
+        padding: 3.5rem clamp(1.5rem, 5vw, 4.5rem);
+    }
+
+    .toc-sticky {
+        position: sticky;
+        top: calc(3.75rem + 2.5rem);
+        /* 底部保留分享按鈕的空間，目錄很長時不會與按鈕重疊 */
+        max-height: calc(100dvh - 3.75rem - 2.5rem - 6rem);
+        overflow-y: auto;
+        padding-top: 1rem;
+    }
+
+    /* 空間不足時不佔欄位，目錄改為右下角懸浮按鈕（樣式見 Toc.astro） */
+    @media (max-width: 1100px) {
+        .page.has-toc {
+            grid-template-columns: minmax(0, var(--content-width));
+        }
+
+        .toc-col,
+        .toc-sticky {
+            display: contents;
+        }
+    }
+
+    @media (max-width: 768px) {
+        .page {
+            width: 100%;
+            min-height: calc(100dvh - 3.75rem - 1px - var(--footer-height));
+            margin: 0;
+        }
+
+        .frame {
+            padding: 2rem 1.5rem 4rem;
+            border-radius: 0;
+            box-shadow: none;
+        }
+    }
+
+    /* 列印：只保留文章卡片，拉滿紙張寬度（頁邊距由 @page 控制） */
+    @media print {
+        .page,
+        .page.has-toc {
+            display: block;
+            width: auto;
+            min-height: 0;
+            margin: 0;
+        }
+
+        .frame {
+            padding: 0;
+        }
+    }
+</style>

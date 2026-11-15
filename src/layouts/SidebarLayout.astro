@@ -1,0 +1,80 @@
+---
+/**
+ * 一般頁面：置中的懸浮卡片，左側為側邊欄，右下角有懸浮的明暗切換鈕。
+ * 窄螢幕時改用折疊式 TopBar 導覽（側邊欄只保留頭像與名稱，懸浮切換鈕隱藏）。
+ */
+import BaseLayout from "./BaseLayout.astro";
+import Sidebar from "../components/Sidebar.astro";
+import ThemeToggle from "../components/ThemeToggle.astro";
+import TopBar from "../components/TopBar.astro";
+
+interface Props {
+    title?: string;
+    description?: string;
+    /** 要求搜尋引擎不要收錄此頁 */
+    noindex?: boolean;
+}
+
+const { title, description, noindex } = Astro.props;
+---
+
+<BaseLayout title={title} description={description} noindex={noindex}>
+    <TopBar mobileOnly />
+    <div class="frame card">
+        <Sidebar />
+        <main class="content">
+            <slot />
+        </main>
+    </div>
+    <div class="floating-toggle" data-no-print>
+        <ThemeToggle floating />
+    </div>
+</BaseLayout>
+
+<style>
+    .frame {
+        display: grid;
+        grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
+        width: min(var(--frame-width), calc(100% - 3rem));
+        min-height: calc(100dvh - 3rem - var(--footer-height));
+        margin: 3rem auto 0;
+    }
+
+    .content {
+        padding: 3.5rem clamp(1.5rem, 4vw, 4rem);
+    }
+
+    @media (max-width: 768px) {
+        .frame {
+            grid-template-columns: 1fr;
+            width: 100%;
+            min-height: calc(100dvh - 3.75rem - 1px - var(--footer-height));
+            margin: 0;
+            border-radius: 0;
+            box-shadow: none;
+        }
+
+        .content {
+            padding: 2rem 1.5rem 4rem;
+        }
+
+        /* 明暗切換改由 TopBar 提供 */
+        .floating-toggle {
+            display: none;
+        }
+    }
+
+    /* 列印：隱藏側邊欄，只保留主要內容 */
+    @media print {
+        .frame {
+            display: block;
+            width: auto;
+            min-height: 0;
+            margin: 0;
+        }
+
+        .content {
+            padding: 0;
+        }
+    }
+</style>

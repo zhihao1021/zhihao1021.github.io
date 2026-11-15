@@ -1,0 +1,85 @@
+/**
+ * 列印樣式（全站共用，於 BaseLayout 引入）。
+ *
+ * - 加上 data-no-print 屬性的元素在列印時隱藏（TopBar、目錄、側邊欄、懸浮按鈕等）
+ * - 一律以淺色主題、白底黑字列印，不受目前的明暗設定影響
+ * - 各版面的排版調整寫在各自元件的 @media print 中
+ */
+
+@media print {
+    @page {
+        margin: 18mm 16mm;
+    }
+
+    [data-no-print] {
+        display: none !important;
+    }
+
+    /*
+     * 強制淺色主題。
+     * 載入順序不保證在 BaseLayout 的全域樣式之後，因此選擇器加上 html 提高權重，
+     * 確保蓋過所有深色規則（:root[data-theme="dark"]、prefers-color-scheme）。
+     */
+    html:root,
+    html:root[data-theme],
+    html:root:not([data-theme="light"]) {
+        --bg: #fff;
+        --surface: #fff;
+        --text: #000;
+        --text-muted: #555;
+        --line: #ccc;
+        --hover: #f2f2f2;
+        --accent: #000;
+        --shadow: none;
+        --placeholder: transparent;
+        color-scheme: light;
+    }
+
+    html body {
+        min-height: 0;
+        background: #fff;
+        color: #000;
+        font-size: 11pt;
+        -webkit-font-smoothing: auto;
+    }
+
+    /* 卡片不需要陰影與圓角 */
+    html .card {
+        border-radius: 0;
+        box-shadow: none;
+    }
+
+    /* 圖片：不顯示佔位與掃光；尚在載入中的圖片一旦下載完成就直接顯示 */
+    .img-ph {
+        background: none !important;
+    }
+
+    .img-ph::after {
+        display: none !important;
+    }
+
+    .img-ph > img {
+        opacity: 1 !important;
+        transition: none !important;
+    }
+
+    img,
+    .img-ph,
+    figure {
+        break-inside: avoid;
+    }
+
+    /* 標題不要落在頁尾、與下方內容分開 */
+    h1,
+    h2,
+    h3,
+    h4 {
+        break-after: avoid;
+    }
+
+    p,
+    li {
+        orphans: 3;
+        widows: 3;
+    }
+}

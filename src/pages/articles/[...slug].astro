@@ -1,0 +1,310 @@
+---
+import { render } from "astro:content";
+import ArticleLayout from "../../layouts/ArticleLayout.astro";
+import Toc from "../../components/Toc.astro";
+import CodeCopy from "../../components/CodeCopy.astro";
+import ShareButton from "../../components/ShareButton.astro";
+import "../../styles/callouts.css";
+import { getArticles, formatDate, formatDateTime, toSlug, type Article } from "../../utils/articles";
+import { categoryAnchor, categoryPath, categoryTrail, isHiddenArticle } from "../../utils/categories";
+import { lastModified } from "../../utils/lastModified";
+import { originalImages } from "../../utils/originalImages";
+
+export async function getStaticPaths() {
+    // 隱藏類別的文章不出現在列表中，但頁面仍會產生
+    const articles = await getArticles({ includeHidden: true });
+    return articles.map((article) => ({ params: { slug: article.id }, props: { article } }));
+}
+
+interface Props {
+    article: Article;
+}
+
+const { article } = Astro.props;
+const { title, date, summary, tags } = article.data;
+const trail = categoryTrail(categoryPath(article));
+// 隱藏類別不在類別頁面中，麵包屑改為純文字，並要求搜尋引擎不要收錄
+const hidden = isHiddenArticle(article);
+const { Content, headings } = await render(article);
+// 上次修改時間：晚於發布時間時才顯示（顯示到分鐘）
+const updated = lastModified(article);
+const showUpdated = updated.getTime() > date.getTime();
+// 給搜尋引擎與 sitemap（<lastmod>，見 astro.config.mjs）使用的修改時間，不早於發布日期
+const modified = showUpdated ? updated : date;
+// 本地圖片的原始檔對照表，放大檢視時顯示原圖（見 Lightbox.astro）
+const originals = JSON.stringify(await originalImages(article)).replace(/</g, "\\u003c");
+// 有 h2 / h3 才顯示目錄
+const showToc = headings.some((h) => h.depth >= 2 && h.depth <= 3);
+---
+
+<ArticleLayout title={title} description={summary} noindex={hidden}>
+    <Fragment slot="head">
+        <meta property="article:published_time" content={date.toISOString()} />
+        <meta property="article:modified_time" content={modified.toISOString()} />
+    </Fragment>
+
+    <article>
+        <header class="head">
+            <nav class="category" aria-label="類別">
+                <span class="material-symbols-outlined" aria-hidden="true">folder</span>
+                {
+                    trail.map((c, i) => (
+                        <>
+                            {i > 0 && <span class="sep">/</span>}
+                            {hidden ? <span>{c.name}</span> : <a href={`/categories#${categoryAnchor(c.path)}`}>{c.name}</a>}
+                        </>
+                    ))
+                }
+            </nav>
+            <h1>{title}</h1>
+            <p class="dates">
+                <span class="date">
+                    <span class="material-symbols-outlined" aria-hidden="true">calendar_today</span>
+                    <span class="sr-label">發布於</span>
+                    <time datetime={date.toISOString()}>{formatDate(date)}</time>
+                </span>
+                {
+                    showUpdated && (
+                        <span class="date" title="上次修改時間">
+                            <span class="material-symbols-outlined" aria-hidden="true">update</span>
+                            更新於
+                            <time datetime={updated.toISOString()}>{formatDateTime(updated)}</time>
+                        </span>
+                    )
+                }
+            </p>
+        </header>
+
+        <div class="prose">
+            <Content />
+        </div>
+
+        {
+            tags.length > 0 && (
+                <footer class="tags">
+                    {tags.map((t) => (
+                        <a href={`/tags#${toSlug(t)}`} class="chip">
+                            #{t}
+                        </a>
+                    ))}
+                </footer>
+            )
+        }
+    </article>
+
+    {showToc && <Toc slot="toc" headings={headings} />}
+    <CodeCopy />
+    <ShareButton />
+    <script type="application/json" data-original-images set:html={originals} />
+</ArticleLayout>
+
+<style>
+    .head {
+        padding-bottom: 2rem;
+        margin-bottom: 2rem;
+        border-bottom: 1px solid var(--line);
+    }
+
+    .category {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.4rem;
+        color: var(--text-muted);
+        font-size: 0.85rem;
+    }
+
+    .category a {
+        text-decoration: none;
+    }
+
+    .category a:hover {
+        text-decoration: underline;
+    }
+
+    .category .material-symbols-outlined {
+        font-size: 1.1rem;
+    }
+
+    .sep {
+        opacity: 0.6;
+    }
+
+    h1 {
+        margin: 0.5rem 0;
+        font-size: clamp(1.75rem, 4vw, 2.5rem);
+        font-weight: 500;
+        line-height: 1.35;
+    }
+
+    .dates {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.25rem 1.25rem;
+        margin: 0;
+        color: var(--text-muted);
+        font-size: 0.9rem;
+    }
+
+    .date {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+    }
+
+    .date .material-symbols-outlined {
+        font-size: 1.05rem;
+    }
+
+    /* 只給螢幕閱讀器的文字 */
+    .sr-label {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip-path: inset(50%);
+        white-space: nowrap;
+    }
+
+    .tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin-top: 3rem;
+        padding-top: 1.5rem;
+        border-top: 1px solid var(--line);
+    }
+
+    /* Markdown 內文樣式 */
+    .prose {
+        font-size: 1.05rem;
+        line-height: 1.9;
+        overflow-wrap: break-word;
+    }
+
+    .prose :global(h2) {
+        margin: 2.5rem 0 0.75rem;
+        /* font-size: 1.4rem; */
+        font-size: 1.75rem;
+        font-weight: 600;
+    }
+
+    .prose :global(h3) {
+        margin: 2rem 0 0.5rem;
+        /* font-size: 1.15rem; */
+        font-size: 1.5rem;
+        font-weight: 600;
+    }
+
+    .prose :global(h4) {
+        font-size: 1.15rem;
+    }
+
+    .prose :global(p) {
+        margin: 1rem 0;
+    }
+
+    .prose :global(strong) {
+        font-weight: 700;
+    }
+
+    .prose :global(code) {
+        padding: 0.1em 0.4em;
+        border-radius: 4px;
+        background: var(--hover);
+        font-size: 0.9em;
+    }
+
+    .prose :global(pre) {
+        padding: 1rem 1.25rem;
+        border-radius: 10px;
+        overflow-x: auto;
+        font-size: 0.9rem;
+        line-height: 1.6;
+    }
+
+    .prose :global(pre code) {
+        padding: 0;
+        background: none;
+    }
+
+    .prose :global(blockquote) {
+        margin: 1.5rem 0;
+        padding: 0.25rem 1.25rem;
+        border-left: 3px solid var(--line);
+        color: var(--text-muted);
+    }
+
+    .prose :global(ul),
+    .prose :global(ol) {
+        padding-left: 1.5rem;
+    }
+
+    .prose :global(hr) {
+        margin: 2.5rem 0;
+        border: none;
+        border-top: 1px solid var(--line);
+    }
+
+    .prose :global(img) {
+        max-width: 100%;
+        border-radius: 10px;
+    }
+
+    /* 列印 */
+    @media print {
+        .head {
+            padding-bottom: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .category .material-symbols-outlined,
+        .date .material-symbols-outlined {
+            display: none;
+        }
+
+        .category a,
+        .tags .chip {
+            color: inherit;
+        }
+
+        h1 {
+            font-size: 22pt;
+        }
+
+        .prose {
+            font-size: 11pt;
+            line-height: 1.8;
+        }
+
+        /* 外部連結在後方印出網址（紙本無法點擊） */
+        .prose :global(a[href^="http"])::after {
+            content: " (" attr(href) ")";
+            color: var(--text-muted);
+            font-size: 0.85em;
+            word-break: break-all;
+        }
+
+        /* 程式碼區塊：保留深色背景與語法顏色（瀏覽器預設不印背景），長行自動換行 */
+        .prose :global(pre) {
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+            white-space: pre-wrap;
+            overflow: visible;
+            break-inside: avoid;
+        }
+
+        .prose :global(code) {
+            border: 1px solid var(--line);
+        }
+
+        .prose :global(pre code) {
+            border: none;
+        }
+
+        .prose :global(blockquote),
+        .prose :global(table) {
+            break-inside: avoid;
+        }
+    }
+</style>

@@ -1,0 +1,15 @@
+---
+import SidebarLayout from "../../layouts/SidebarLayout.astro";
+import ArticleList from "../../components/ArticleList.astro";
+import { getArticles } from "../../utils/articles";
+
+const articles = await getArticles();
+---
+
+<SidebarLayout title="Articles">
+    <header class="page-head">
+        <h2>Articles</h2>
+        <p>共 {articles.length} 篇文章</p>
+    </header>
+    <ArticleList articles={articles} />
+</SidebarLayout>

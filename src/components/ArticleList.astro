@@ -1,0 +1,193 @@
+---
+import { formatDate, toSlug, type Article } from "../utils/articles";
+import { categoryAnchor, categoryPath, categoryTrail } from "../utils/categories";
+
+interface Props {
+    articles: Article[];
+    /** compact：不顯示摘要 */
+    compact?: boolean;
+}
+
+const { articles, compact = false } = Astro.props;
+---
+
+<ul class:list={["list", { compact }]}>
+    {
+        articles.map((a) => {
+            const trail = categoryTrail(categoryPath(a));
+            return (
+                <li class="item">
+                    <time datetime={a.data.date.toISOString()}>{formatDate(a.data.date)}</time>
+                    <div class="body">
+                        {/* 標題連結以 ::after 撐滿整列，點擊任何空白處都能進入文章；類別與標籤是獨立連結 */}
+                        <a href={`/articles/${a.id}`} class="title">
+                            {a.data.title}
+                        </a>
+                        {!compact && <span class="summary">{a.data.summary}</span>}
+                        <div class="meta">
+                            <span class="category">
+                                <span class="material-symbols-outlined" aria-hidden="true">
+                                    folder
+                                </span>
+                                <span class="sr-only">類別：</span>
+                                {trail.map((c, i) => (
+                                    <>
+                                        {i > 0 && <span class="sep">/</span>}
+                                        <a href={`/categories#${categoryAnchor(c.path)}`}>{c.name}</a>
+                                    </>
+                                ))}
+                            </span>
+                            {a.data.tags.length > 0 && (
+                                <span class="tags">
+                                    <span class="sr-only">標籤：</span>
+                                    {a.data.tags.map((t) => (
+                                        <a href={`/tags#${toSlug(t)}`} class="chip">
+                                            #{t}
+                                        </a>
+                                    ))}
+                                </span>
+                            )}
+                        </div>
+                    </div>
+                </li>
+            );
+        })
+    }
+</ul>
+
+<style>
+    .list {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+    }
+
+    .item {
+        position: relative;
+        display: flex;
+        gap: 1.5rem;
+        padding: 1.1rem 0.25rem;
+        border-bottom: 1px solid var(--line);
+    }
+
+    .compact .item {
+        padding: 0.8rem 0.25rem;
+    }
+
+    time {
+        flex-shrink: 0;
+        color: var(--text-muted);
+        font-variant-numeric: tabular-nums;
+    }
+
+    .body {
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+    }
+
+    .title {
+        color: var(--text);
+        text-decoration: none;
+        transition: color 0.2s;
+    }
+
+    /* 讓標題連結覆蓋整列 */
+    .title::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+    }
+
+    .item:hover .title {
+        color: var(--accent);
+    }
+
+    .title:focus-visible {
+        outline: none;
+    }
+
+    .title:focus-visible::after {
+        outline: 2px solid var(--accent);
+        outline-offset: -2px;
+        border-radius: 6px;
+    }
+
+    .summary {
+        margin-top: 0.15rem;
+        color: var(--text-muted);
+        font-size: 0.9rem;
+    }
+
+    .meta {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.4rem 0.9rem;
+        margin-top: 0.45rem;
+        color: var(--text-muted);
+        font-size: 0.8rem;
+    }
+
+    /* 類別、標籤疊在標題的覆蓋層之上，才能單獨點擊 */
+    .meta a {
+        position: relative;
+        z-index: 1;
+    }
+
+    .category {
+        display: inline-flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.3rem;
+    }
+
+    .category .material-symbols-outlined {
+        font-size: 1rem;
+    }
+
+    .category a {
+        color: inherit;
+        text-decoration: none;
+    }
+
+    .category a:hover {
+        color: var(--accent);
+        text-decoration: underline;
+    }
+
+    .sep {
+        opacity: 0.6;
+    }
+
+    .tags {
+        display: inline-flex;
+        flex-wrap: wrap;
+        gap: 0.35rem;
+    }
+
+    .tags .chip {
+        padding: 0 0.55rem;
+        font-size: 0.75rem;
+    }
+
+    .sr-only {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip-path: inset(50%);
+        white-space: nowrap;
+    }
+
+    @media (max-width: 480px) {
+        .item {
+            flex-direction: column;
+            gap: 0;
+        }
+
+        time {
+            font-size: 0.85rem;
+        }
+    }
+</style>

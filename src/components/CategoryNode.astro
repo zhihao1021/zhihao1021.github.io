@@ -1,0 +1,121 @@
+---
+/**
+ * 類別樹的單一節點（可展開的 Dropdown），會遞迴渲染子類別。
+ */
+import ArticleList from "./ArticleList.astro";
+import { categoryAnchor, type CategoryNode } from "../utils/categories";
+
+interface Props {
+    node: CategoryNode;
+    depth?: number;
+}
+
+const { node, depth = 0 } = Astro.props;
+---
+
+<details class="category" id={categoryAnchor(node.path)} data-depth={depth}>
+    <summary>
+        <span class="material-symbols-outlined chevron" aria-hidden="true">chevron_right</span>
+        <span class="material-symbols-outlined folder closed" aria-hidden="true">folder</span>
+        <span class="material-symbols-outlined folder opened" aria-hidden="true">folder_open</span>
+        <span class="name">{node.name}</span>
+        <span class="count" title={`${node.total} 篇文章`}>{node.total}</span>
+    </summary>
+
+    <div class="children">
+        {node.children.map((child) => <Astro.self node={child} depth={depth + 1} />)}
+        {node.articles.length > 0 && <ArticleList articles={node.articles} compact />}
+    </div>
+</details>
+
+<style>
+    .category {
+        border-bottom: 1px solid var(--line);
+        scroll-margin-top: 2rem;
+    }
+
+    .children > .category:last-child,
+    .children > :global(.list) li:last-child {
+        border-bottom: none;
+    }
+
+    summary {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        padding: 0.85rem 0.5rem;
+        cursor: pointer;
+        list-style: none;
+        user-select: none;
+        transition: background-color 0.2s;
+    }
+
+    summary::-webkit-details-marker {
+        display: none;
+    }
+
+    summary:hover {
+        background: var(--hover);
+    }
+
+    summary:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: -2px;
+    }
+
+    .chevron {
+        color: var(--text-muted);
+        font-size: 1.25rem;
+        transition: transform 0.2s;
+    }
+
+    .category[open] > summary .chevron {
+        transform: rotate(90deg);
+    }
+
+    .folder {
+        color: var(--text-muted);
+        font-size: 1.25rem;
+    }
+
+    .opened,
+    .category[open] > summary .closed {
+        display: none;
+    }
+
+    .category[open] > summary .opened {
+        display: inline;
+    }
+
+    .name {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .category[open] > summary .name {
+        font-weight: 500;
+    }
+
+    .count {
+        min-width: 1.75rem;
+        padding: 0 0.5rem;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        color: var(--text-muted);
+        font-size: 0.75rem;
+        text-align: center;
+        font-variant-numeric: tabular-nums;
+    }
+
+    /* 子層：縮排並以細線標示層級 */
+    .children {
+        margin: 0 0 0.75rem 1.1rem;
+        padding-left: 1rem;
+        border-left: 1px solid var(--line);
+    }
+
+    .category:target > summary,
+    .category.highlight > summary {
+        color: var(--accent);
+    }
+</style>

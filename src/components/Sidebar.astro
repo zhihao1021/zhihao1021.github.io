@@ -1,0 +1,167 @@
+---
+import { site } from "../config/site";
+import { Image } from "astro:assets";
+import { isActive, linkAttrs } from "../utils/nav";
+
+const { pathname } = Astro.url;
+---
+
+<aside class="sidebar" data-no-print>
+    <div class="inner">
+        <div class="profile">
+            <!-- loading="eager"：首屏圖片不延後載入，已快取時直接顯示 -->
+            <Image class="avatar" src={site.avatar} alt={site.name} width={128} height={128} loading="eager" />
+            <h1 class="name">{site.name}</h1>
+            {site.tagline && <p class="tagline">{site.tagline}</p>}
+        </div>
+
+        <nav aria-label="主要導覽">
+            <ul class="nav">
+                {
+                    site.nav.map((item) => {
+                        const active = isActive(item.href, pathname);
+                        return (
+                            <li>
+                                <a
+                                    href={item.href}
+                                    class:list={["nav-row", { active }]}
+                                    aria-current={active ? "page" : undefined}
+                                    {...linkAttrs(item.href)}
+                                >
+                                    <span class="material-symbols-outlined" aria-hidden="true">
+                                        {item.icon}
+                                    </span>
+                                    <span class="label">{item.label}</span>
+                                </a>
+                            </li>
+                        );
+                    })
+                }
+            </ul>
+        </nav>
+    </div>
+</aside>
+
+<style>
+    /* 側邊欄使用細字體與細線圖示（其餘區域為標準字重） */
+    .sidebar {
+        border-right: 1px solid var(--line);
+        font-weight: 300;
+    }
+
+    .sidebar .material-symbols-outlined {
+        font-variation-settings:
+            "FILL" 0,
+            "wght" 200,
+            "GRAD" 0,
+            "opsz" 24;
+    }
+
+    /* 外層隨卡片拉滿高度（讓分隔線到底），內層跟著捲動黏在上方 */
+    .inner {
+        position: sticky;
+        top: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 2.5rem;
+        padding: 3.5rem 2.25rem;
+    }
+
+    .profile {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+    }
+
+    .avatar {
+        width: 128px;
+        height: 128px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 1px solid var(--line);
+    }
+
+    /* 頭像的佔位符（由 middleware 包上）也要是圓形，第一個畫面就生效 */
+    .profile :global(.img-ph) {
+        border-radius: 50%;
+    }
+
+    .name {
+        margin: 1.25rem 0 0;
+        font-size: 1.25rem;
+        font-weight: 400;
+        letter-spacing: 0.04em;
+    }
+
+    .tagline {
+        margin: 0.35rem 0 0;
+        font-size: 0.875rem;
+        color: var(--text-muted);
+    }
+
+    .nav {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        border-top: 1px solid var(--line);
+    }
+
+    .nav li {
+        border-bottom: 1px solid var(--line);
+    }
+
+    .nav-row {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 0.9rem 0.5rem;
+        color: var(--text-muted);
+        text-decoration: none;
+        transition:
+            color 0.2s,
+            background-color 0.2s;
+    }
+
+    .nav-row:hover {
+        color: var(--text);
+        background-color: var(--hover);
+    }
+
+    .nav-row.active {
+        color: var(--text);
+        font-weight: 400;
+    }
+
+    .nav-row .material-symbols-outlined {
+        font-size: 1.375rem;
+    }
+
+    .label {
+        letter-spacing: 0.06em;
+    }
+
+    /* 窄螢幕：側邊欄改到上方 */
+    @media (max-width: 768px) {
+        .sidebar {
+            border-right: none;
+            border-bottom: 1px solid var(--line);
+        }
+
+        .inner {
+            position: static;
+            padding: 2.5rem 1.5rem 1.5rem;
+            gap: 1.5rem;
+        }
+
+        .avatar {
+            width: 96px;
+            height: 96px;
+        }
+
+        /* 窄螢幕的導覽改由 TopBar 提供（見 SidebarLayout） */
+        nav {
+            display: none;
+        }
+    }
+</style>

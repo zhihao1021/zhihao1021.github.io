@@ -1,0 +1,71 @@
+---
+import SidebarLayout from "../layouts/SidebarLayout.astro";
+import ArticleList from "../components/ArticleList.astro";
+import { getArticles, groupBy, toSlug } from "../utils/articles";
+
+const groups = groupBy(await getArticles(), (a) => a.data.tags);
+---
+
+<SidebarLayout title="Tags">
+    <header class="page-head">
+        <h2>Tags</h2>
+        <p>共 {groups.length} 個標籤</p>
+    </header>
+
+    <div class="cloud">
+        {
+            groups.map(([name, list]) => (
+                <a href={`#${toSlug(name)}`} class="chip">
+                    #{name}
+                    <span class="count">{list.length}</span>
+                </a>
+            ))
+        }
+    </div>
+
+    {
+        groups.map(([name, list]) => (
+            <section id={toSlug(name)} class="group">
+                <h3>#{name}</h3>
+                <ArticleList articles={list} compact />
+            </section>
+        ))
+    }
+</SidebarLayout>
+
+<style>
+    .cloud {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.6rem;
+        margin-top: 2rem;
+    }
+
+    .cloud .chip {
+        padding: 0.3rem 0.9rem;
+        font-size: 0.875rem;
+    }
+
+    .count {
+        font-size: 0.75rem;
+        opacity: 0.7;
+    }
+
+    .group {
+        margin-top: 3rem;
+        scroll-margin-top: 2rem;
+    }
+
+    .group h3 {
+        margin: 0 0 0.25rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 1px solid var(--line);
+        font-size: 1.1rem;
+        font-weight: 500;
+    }
+
+    /* 從標籤雲或文章點進來時，凸顯目標區塊 */
+    .group:target h3 {
+        color: var(--accent);
+    }
+</style>

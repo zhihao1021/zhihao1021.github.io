@@ -1,0 +1,535 @@
+---
+import { site } from "../config/site";
+import { isActive, linkAttrs } from "../utils/nav";
+import { getArticles, formatDate } from "../utils/articles";
+import { categoryPath, categoryTrail } from "../utils/categories";
+import ThemeToggle from "./ThemeToggle.astro";
+import { Image } from "astro:assets";
+
+interface Props {
+    /** true：只在窄螢幕顯示（側邊欄頁面在手機上用 TopBar 導覽） */
+    mobileOnly?: boolean;
+}
+
+const { mobileOnly = false } = Astro.props;
+const { pathname } = Astro.url;
+
+const navItems = site.nav.map((item) => ({ ...item, active: isActive(item.href, pathname) }));
+
+// 搜尋用的索引（靜態網站，直接嵌入頁面）
+const index = (await getArticles()).map((a) => ({
+    title: a.data.title,
+    summary: a.data.summary,
+    tags: a.data.tags,
+    category: categoryTrail(categoryPath(a))
+        .map((c) => c.name)
+        .join(" / "),
+    date: formatDate(a.data.date),
+    url: `/articles/${a.id}`,
+}));
+---
+
+<header class:list={["topbar", { "mobile-only": mobileOnly }]} data-topbar data-no-print>
+    <div class="bar">
+        <a href="/" class="brand">
+            <!--
+                與側邊欄頭像使用相同的輸出尺寸（128），產生同一個圖片檔，切換頁面時直接使用快取；
+                旁邊已有網站標題，因此 alt 留空（裝飾用）
+            -->
+            <Image class="brand-avatar" src={site.avatar} alt="" width={128} height={128} loading="eager" />
+            <span class="brand-title">{site.title}</span>
+        </a>
+
+        <div class="actions">
+            <!-- 寬螢幕：橫向 nav -->
+            <nav class="desktop-nav" aria-label="主要導覽">
+                <ul class="nav">
+                    {
+                        navItems.map((item) => (
+                            <li>
+                                <a
+                                    href={item.href}
+                                    class:list={["nav-link", { active: item.active }]}
+                                    aria-current={item.active ? "page" : undefined}
+                                    title={item.label}
+                                    {...linkAttrs(item.href)}
+                                >
+                                    <span class="material-symbols-outlined" aria-hidden="true">
+                                        {item.icon}
+                                    </span>
+                                    <span class="label">{item.label}</span>
+                                </a>
+                            </li>
+                        ))
+                    }
+                </ul>
+            </nav>
+
+            <span class="divider" aria-hidden="true"></span>
+
+            <button type="button" class="icon-btn" data-search-open aria-label="搜尋文章" title="搜尋（/）">
+                <span class="material-symbols-outlined" aria-hidden="true">search</span>
+            </button>
+            <ThemeToggle />
+
+            <!-- 窄螢幕：展開 / 收合 nav -->
+            <button
+                type="button"
+                class="icon-btn menu-btn"
+                data-menu-toggle
+                aria-expanded="false"
+                aria-controls="mobile-nav"
+                aria-label="開啟選單"
+            >
+                <span class="material-symbols-outlined icon-menu" aria-hidden="true">menu</span>
+                <span class="material-symbols-outlined icon-close" aria-hidden="true">close</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- 窄螢幕：折疊式 nav -->
+    <nav id="mobile-nav" class="mobile-nav" aria-label="主要導覽" data-mobile-nav>
+        <div class="mobile-nav-inner">
+            <ul>
+                {
+                    navItems.map((item) => (
+                        <li>
+                            <a
+                                href={item.href}
+                                class:list={["mobile-link", { active: item.active }]}
+                                aria-current={item.active ? "page" : undefined}
+                                tabindex="-1"
+                                {...linkAttrs(item.href)}
+                            >
+                                <span class="material-symbols-outlined" aria-hidden="true">
+                                    {item.icon}
+                                </span>
+                                <span>{item.label}</span>
+                            </a>
+                        </li>
+                    ))
+                }
+            </ul>
+        </div>
+    </nav>
+</header>
+
+<dialog class="search" data-search-dialog data-no-print>
+    <div class="search-box">
+        <span class="material-symbols-outlined" aria-hidden="true">search</span>
+        <input type="text" enterkeyhint="search" autocomplete="off" placeholder="搜尋標題、摘要、標籤…" aria-label="搜尋文章" data-search-input />
+        <button type="button" class="icon-btn" data-search-close aria-label="關閉">
+            <span class="material-symbols-outlined" aria-hidden="true">close</span>
+        </button>
+    </div>
+    <ul class="results" data-search-results></ul>
+    <script type="application/json" data-search-index set:html={JSON.stringify(index)} />
+</dialog>
+
+<script>
+    interface Item {
+        title: string;
+        summary: string;
+        tags: string[];
+        category: string;
+        date: string;
+        url: string;
+    }
+
+    const dialog = document.querySelector<HTMLDialogElement>("[data-search-dialog]")!;
+    const input = dialog.querySelector<HTMLInputElement>("[data-search-input]")!;
+    const results = dialog.querySelector<HTMLUListElement>("[data-search-results]")!;
+    const items: Item[] = JSON.parse(dialog.querySelector("[data-search-index]")!.textContent || "[]");
+
+    function render(q: string) {
+        const query = q.trim().toLowerCase();
+        const hits = query
+            ? items.filter((i) =>
+                    [i.title, i.summary, i.category, ...i.tags].some((s) => s.toLowerCase().includes(query)),
+                )
+            : items;
+
+        results.replaceChildren(
+            ...(hits.length
+                ? hits.map((i) => {
+                        const li = document.createElement("li");
+                        const a = document.createElement("a");
+                        a.href = i.url;
+                        const title = document.createElement("span");
+                        title.className = "r-title";
+                        title.textContent = i.title;
+                        const meta = document.createElement("span");
+                        meta.className = "r-meta";
+                        meta.textContent = `${i.date} · ${i.category}`;
+                        a.append(title, meta);
+                        li.append(a);
+                        return li;
+                    })
+                : [Object.assign(document.createElement("li"), { className: "empty", textContent: "找不到相符的文章" })]),
+        );
+    }
+
+    function open() {
+        render(input.value);
+        dialog.showModal();
+        input.focus();
+    }
+
+    document.querySelector("[data-search-open]")?.addEventListener("click", open);
+    dialog.querySelector("[data-search-close]")?.addEventListener("click", () => dialog.close());
+    input.addEventListener("input", () => render(input.value));
+    // 點擊背景關閉
+    dialog.addEventListener("click", (e) => {
+        if (e.target === dialog) dialog.close();
+    });
+    // 按 / 開啟搜尋
+    document.addEventListener("keydown", (e) => {
+        const t = e.target as HTMLElement;
+        if (e.key === "/" && !dialog.open && !t.closest("input, textarea, [contenteditable]")) {
+            e.preventDefault();
+            open();
+        }
+    });
+
+    // ---- 窄螢幕：折疊式 nav ----
+    const topbar = document.querySelector<HTMLElement>("[data-topbar]")!;
+    const menuBtn = topbar.querySelector<HTMLButtonElement>("[data-menu-toggle]")!;
+    const mobileLinks = topbar.querySelectorAll<HTMLAnchorElement>(".mobile-link");
+
+    function setMenu(open: boolean) {
+        topbar.toggleAttribute("data-open", open);
+        menuBtn.setAttribute("aria-expanded", String(open));
+        menuBtn.setAttribute("aria-label", open ? "關閉選單" : "開啟選單");
+        // 收合時不讓連結被 Tab 選到
+        mobileLinks.forEach((a) => (a.tabIndex = open ? 0 : -1));
+    }
+
+    menuBtn.addEventListener("click", () => setMenu(!topbar.hasAttribute("data-open")));
+    mobileLinks.forEach((a) => a.addEventListener("click", () => setMenu(false)));
+    // 點擊 TopBar 以外的地方、按 Esc、或螢幕變寬時收合
+    document.addEventListener("click", (e) => {
+        if (!topbar.contains(e.target as Node)) setMenu(false);
+    });
+    document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape" && topbar.hasAttribute("data-open")) {
+            setMenu(false);
+            menuBtn.focus();
+        }
+    });
+    matchMedia("(min-width: 769px)").addEventListener("change", (e) => {
+        if (e.matches) setMenu(false);
+    });
+</script>
+
+<style>
+    .topbar {
+        position: sticky;
+        top: 0;
+        z-index: 40;
+        background: color-mix(in srgb, var(--surface) 85%, transparent);
+        backdrop-filter: blur(10px);
+        border-bottom: 1px solid var(--line);
+    }
+
+    .bar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        max-width: var(--frame-width);
+        height: 3.75rem;
+        margin: 0 auto;
+        padding: 0 1.5rem;
+    }
+
+    .brand {
+        display: flex;
+        align-items: center;
+        gap: 0.65rem;
+        color: var(--text);
+        font-size: 1.1rem;
+        font-weight: 500;
+        letter-spacing: 0.04em;
+        text-decoration: none;
+        white-space: nowrap;
+    }
+
+    /* 方形頭像（微圓角；要完全直角改為 0） */
+    .brand-avatar {
+        width: 2rem;
+        height: 2rem;
+        object-fit: cover;
+    }
+
+    /* 頭像的佔位符（由 middleware 包上）同樣圓角，第一個畫面就生效 */
+    .brand :global(.img-ph) {
+        flex-shrink: 0;
+    }
+
+    .actions {
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+    }
+
+    .nav {
+        display: flex;
+        gap: 0.25rem;
+        list-style: none;
+        margin: 0;
+        padding: 0;
+    }
+
+    .nav-link {
+        display: flex;
+        align-items: center;
+        gap: 0.35rem;
+        padding: 0.4rem 0.7rem;
+        border-radius: 999px;
+        color: var(--text-muted);
+        font-size: 0.9rem;
+        letter-spacing: 0.04em;
+        text-decoration: none;
+        transition:
+            color 0.2s,
+            background-color 0.2s;
+    }
+
+    .nav-link:hover {
+        color: var(--text);
+        background: var(--hover);
+    }
+
+    .nav-link.active {
+        color: var(--text);
+        font-weight: 500;
+    }
+
+    .nav-link .material-symbols-outlined {
+        font-size: 1.25rem;
+    }
+
+    .divider {
+        width: 1px;
+        height: 1.25rem;
+        margin: 0 0.5rem;
+        background: var(--line);
+    }
+
+    .icon-btn {
+        display: inline-grid;
+        place-items: center;
+        width: 2.5rem;
+        height: 2.5rem;
+        padding: 0;
+        border: none;
+        border-radius: 50%;
+        background: transparent;
+        color: var(--text-muted);
+        cursor: pointer;
+        transition:
+            color 0.2s,
+            background-color 0.2s;
+    }
+
+    .icon-btn:hover {
+        color: var(--text);
+        background: var(--hover);
+    }
+
+    /* 中等寬度：nav 只顯示圖示 */
+    @media (max-width: 1024px) {
+        .nav-link .label {
+            display: none;
+        }
+
+        .nav-link {
+            padding: 0.5rem;
+        }
+    }
+
+    /* ---- 折疊式 nav（預設隱藏，窄螢幕才使用） ---- */
+    .menu-btn,
+    .mobile-nav {
+        display: none;
+    }
+
+    .icon-close,
+    .topbar[data-open] .icon-menu {
+        display: none;
+    }
+
+    .topbar[data-open] .icon-close {
+        display: inline;
+    }
+
+    @media (min-width: 769px) {
+        .topbar.mobile-only {
+            display: none;
+        }
+    }
+
+    @media (max-width: 768px) {
+        .bar {
+            padding: 0 0.5rem 0 1.25rem;
+        }
+
+        .brand {
+            min-width: 0;
+        }
+
+        .brand-title {
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .actions {
+            gap: 0;
+        }
+
+        .desktop-nav,
+        .divider {
+            display: none;
+        }
+
+        .menu-btn {
+            display: inline-grid;
+        }
+
+        /* 展開動畫：grid-template-rows 0fr → 1fr */
+        .mobile-nav {
+            display: grid;
+            grid-template-rows: 0fr;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: var(--surface);
+            transition:
+                grid-template-rows 0.25s ease,
+                box-shadow 0.25s;
+        }
+
+        .topbar[data-open] .mobile-nav {
+            grid-template-rows: 1fr;
+            border-bottom: 1px solid var(--line);
+            box-shadow: 0 16px 24px -12px rgb(0 0 0 / 0.18);
+        }
+
+        .mobile-nav-inner {
+            overflow: hidden;
+        }
+
+        .mobile-nav ul {
+            list-style: none;
+            margin: 0;
+            padding: 0.25rem 1.25rem 0.75rem;
+        }
+
+        .mobile-nav li + li {
+            border-top: 1px solid var(--line);
+        }
+
+        .mobile-link {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 0.85rem 0.25rem;
+            color: var(--text-muted);
+            letter-spacing: 0.04em;
+            text-decoration: none;
+        }
+
+        .mobile-link:hover,
+        .mobile-link.active {
+            color: var(--text);
+        }
+
+        .mobile-link.active {
+            font-weight: 500;
+        }
+
+        .mobile-link .material-symbols-outlined {
+            font-size: 1.375rem;
+        }
+    }
+
+    @media (max-width: 768px) and (prefers-reduced-motion: reduce) {
+        .mobile-nav {
+            transition: none;
+        }
+    }
+
+    /* 搜尋視窗 */
+    .search {
+        width: min(560px, calc(100vw - 2rem));
+        max-height: min(70vh, 560px);
+        margin: 12vh auto auto;
+        padding: 0;
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        background: var(--surface);
+        color: var(--text);
+        box-shadow: var(--shadow);
+    }
+
+    .search::backdrop {
+        background: rgb(0 0 0 / 0.35);
+        backdrop-filter: blur(2px);
+    }
+
+    .search-box {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem 0.5rem 0.5rem 1rem;
+        border-bottom: 1px solid var(--line);
+        color: var(--text-muted);
+    }
+
+    .search-box input {
+        flex: 1;
+        min-width: 0;
+        padding: 0.5rem 0;
+        border: none;
+        outline: none;
+        background: transparent;
+        color: var(--text);
+        font: inherit;
+    }
+
+    .results {
+        list-style: none;
+        margin: 0;
+        padding: 0.5rem;
+        overflow-y: auto;
+        max-height: calc(min(70vh, 560px) - 4rem);
+    }
+
+    .results :global(a) {
+        display: flex;
+        flex-direction: column;
+        padding: 0.6rem 0.75rem;
+        border-radius: 8px;
+        color: var(--text);
+        text-decoration: none;
+    }
+
+    .results :global(a:hover),
+    .results :global(a:focus-visible) {
+        background: var(--hover);
+        outline: none;
+    }
+
+    .results :global(.r-meta) {
+        color: var(--text-muted);
+        font-size: 0.8rem;
+    }
+
+    .results :global(.empty) {
+        padding: 1.5rem;
+        text-align: center;
+        color: var(--text-muted);
+    }
+</style>
