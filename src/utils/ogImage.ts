@@ -30,7 +30,10 @@ const COLORS = {
     text: "#1f1f1f",
     muted: "#6b6b6b",
     line: "#e6e6e4",
-    accent: "#3d6b8f",
+    /** 文字用（白底上需夠深） */
+    accent: "#6e6e28",
+    /** 底部色條（裝飾，直接使用主題色） */
+    accentBar: "#d8d890",
 };
 
 const FONT_FAMILY = "Noto Sans TC";
@@ -170,7 +173,7 @@ function layout(card: OgCard, avatar: string): Node {
         ),
 
         // 最下方的主題色條
-        h("div", { style: { position: "absolute", left: 0, right: 0, bottom: 0, height: 12, background: COLORS.accent } }),
+        h("div", { style: { position: "absolute", left: 0, right: 0, bottom: 0, height: 12, background: COLORS.accentBar } }),
     );
 }
 
