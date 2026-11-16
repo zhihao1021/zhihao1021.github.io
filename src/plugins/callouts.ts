@@ -9,7 +9,7 @@
  *   內容
  *   :::
  *
- * - 支援 success / info / warning / danger，輸出 <div class="callout callout-xxx">
+ * - 支援 success / info / warning / danger / extend，輸出 <div class="callout callout-xxx">
  * - `[...]` 中的文字會成為區塊標題
  * - 其他名稱輸出為 <div class="directive directive-xxx">（不套用樣式，內容照常顯示）
  *
@@ -18,7 +18,7 @@
  */
 import { defineMdastPlugin } from "satteri";
 
-export const CALLOUT_TYPES = ["success", "info", "warning", "danger"] as const;
+export const CALLOUT_TYPES = ["success", "info", "warning", "danger", "extend"] as const;
 
 export function callouts() {
     return defineMdastPlugin({

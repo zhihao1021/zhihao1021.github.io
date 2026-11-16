@@ -1,5 +1,5 @@
 /**
- * 提示區塊（:::success / info / warning / danger，見 src/plugins/callouts.ts）。
+ * 提示區塊（:::success / info / warning / danger / extend，見 src/plugins/callouts.ts）。
  * 每種類型只需設定一個主色 --callout，背景與邊框由主色與卡片底色混合而成，明暗主題都適用。
  */
 
@@ -81,6 +81,15 @@
 
 .prose .callout-danger::before {
     content: "error";
+}
+
+/* 延伸閱讀 / 補充：使用網站主題色（--accent 已依明暗主題切換，不需另設深色值） */
+.prose .callout-extend {
+    --callout: var(--accent);
+}
+
+.prose .callout-extend::before {
+    content: "lightbulb_2";
 }
 
 /* 深色主題：主色調亮，維持對比 */

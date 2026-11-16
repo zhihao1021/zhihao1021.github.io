@@ -1,7 +1,7 @@
 ---
 title: 01：不依賴 Vitis 將 Bitstream 燒錄至 Cmod-A7 上
 date: 2026-11-16
-updated: 2026-11-16T04:51:00+08:00
+updated: 2026-11-16T19:11:00+08:00
 summary: 簡述如何在不使用 Vitis 的情況下，將 Bitstream 燒錄至 Cmod-A7 開發板上。
 tags: ["微算機 2027"]
 ---
@@ -32,6 +32,9 @@ openFPGALoader -V
 
 :::info
 如果沒有出現 OpenFPGALoader 的版本資訊，請嘗試將 UCRT64 的路徑加入系統環境變數中，如果在安裝 MSYS2 的過程中沒有修改安裝位置的話，UCRT64 的路徑預設為 `C:\msys64\ucrt64\bin`，請將此路徑加入系統環境變數中，並重新開啟終端機後再次輸入 `openFPGALoader -V` 來確認是否安裝成功。
+:::
+:::extend
+延伸閱讀：[在 Windows 中將路徑加入環境變數](../../basic/windows-add-to-path)
 :::
 
 ### macOS

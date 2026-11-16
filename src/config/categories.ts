@@ -25,6 +25,9 @@ export const categoryNames: Record<string, CategoryName> = {
         sub: {
             "microprocessor": { name: "微算機" },
         }
+    },
+    basic: {
+        name: "基礎知識",
     }
 };
 

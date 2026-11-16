@@ -42,7 +42,7 @@ export default defineConfig({
   site,
   markdown: {
     processor: satteri({
-      // :::success / info / warning / danger 提示區塊
+      // :::success / info / warning / danger / extend 提示區塊
       features: { directive: true },
       mdastPlugins: [callouts()],
       hastPlugins: [
