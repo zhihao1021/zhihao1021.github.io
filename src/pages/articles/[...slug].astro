@@ -4,6 +4,7 @@ import ArticleLayout from "../../layouts/ArticleLayout.astro";
 import Toc from "../../components/Toc.astro";
 import CodeCopy from "../../components/CodeCopy.astro";
 import ShareButton from "../../components/ShareButton.astro";
+import { shortCode, shortPath } from "../../utils/shortLinks";
 import "../../styles/callouts.css";
 import { getArticles, formatDate, formatDateTime, toSlug, type Article } from "../../utils/articles";
 import { categoryAnchor, categoryPath, categoryTrail, isHiddenArticle } from "../../utils/categories";
@@ -94,7 +95,7 @@ const showToc = headings.some((h) => h.depth >= 2 && h.depth <= 3);
 
     {showToc && <Toc slot="toc" headings={headings} />}
     <CodeCopy />
-    <ShareButton />
+    <ShareButton url={new URL(shortPath(shortCode(article)), Astro.site ?? Astro.url).href} />
     <script type="application/json" data-original-images set:html={originals} />
 </ArticleLayout>
 

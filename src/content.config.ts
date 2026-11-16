@@ -53,6 +53,14 @@ const articles = defineCollection({
         tags: z.array(z.string()).default([]),
         /** true 時不會出現在網站上 */
         draft: z.boolean().default(false),
+        /**
+         * 自訂短網址代碼（/s/<代碼>），選填；未填時由文章路徑自動產生（見 src/utils/shortLinks.ts）。
+         * 自訂後即使之後搬移 / 改名文章，短網址仍然有效。
+         */
+        short: z
+            .string()
+            .regex(/^[A-Za-z0-9_-]+$/, "短網址代碼只能包含英數字、- 與 _")
+            .optional(),
     }),
 });
 

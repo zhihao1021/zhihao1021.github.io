@@ -1,0 +1,55 @@
+---
+/**
+ * 短網址轉址頁：/s/<代碼> → 文章（見 src/utils/shortLinks.ts）。
+ * 以 nginx 部署時會先由伺服器回應 301（見 deploy/nginx.conf），這個頁面是沒有設定時的備援。
+ * 附上文章的分享資訊，讓不會跟隨轉址的社群平台也能顯示預覽。
+ */
+import { site } from "../../config/site";
+import { articlePath, getShortLinks } from "../../utils/shortLinks";
+import type { Article } from "../../utils/articles";
+
+export async function getStaticPaths() {
+    const links = await getShortLinks();
+    return links.map(({ code, article }) => ({ params: { code }, props: { article } }));
+}
+
+interface Props {
+    article: Article;
+}
+
+const { article } = Astro.props;
+const { title, summary } = article.data;
+const base = Astro.site ?? Astro.url;
+// 轉址用站內路徑（本機開發 / 預覽時也能正常跳轉）；canonical 與分享資訊用正式網址
+const path = encodeURI(articlePath(article));
+const target = new URL(articlePath(article), base).href;
+const image = new URL(`/og/${article.id}.png`, base).href;
+---
+
+<!doctype html>
+<html lang="zh-Hant">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>{title} | {site.title}</title>
+        <meta http-equiv="refresh" content={`0; url=${path}`} />
+        <link rel="canonical" href={target} />
+        <meta name="robots" content="noindex" />
+        <meta name="description" content={summary} />
+        <meta property="og:type" content="article" />
+        <meta property="og:site_name" content={site.title} />
+        <meta property="og:title" content={title} />
+        <meta property="og:description" content={summary} />
+        <meta property="og:url" content={target} />
+        <meta property="og:image" content={image} />
+        <meta property="og:image:width" content="1200" />
+        <meta property="og:image:height" content="630" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <script is:inline define:vars={{ path }}>
+            location.replace(path);
+        </script>
+    </head>
+    <body>
+        <p>正在前往 <a href={path}>{title}</a>…</p>
+    </body>
+</html>

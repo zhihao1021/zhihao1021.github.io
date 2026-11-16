@@ -60,11 +60,15 @@ export default defineConfig({
     // 建置時自動產生 /sitemap-index.xml 與 /sitemap-0.xml
     sitemap({
       // 隱藏類別的文章（noindex）不列入 sitemap
-      filter: (page) => !isHiddenArticleUrl(page),
+      // 短網址（/s/...）只是轉址頁，也不列入
+      filter: (page) => !isHiddenArticleUrl(page) && !new URL(page).pathname.startsWith('/s/'),
       // 文章頁面加上 <lastmod>
       serialize: async (item) => {
         const lastmod = await readModifiedTime(item.url);
-        return lastmod ? { ...item, lastmod } : item;
+        // 與站內連結一致，去掉結尾斜線（首頁除外；deploy/nginx.conf 會把有斜線的網址 301 到無斜線版本）
+        const url = new URL(item.url);
+        if (url.pathname !== '/') url.pathname = url.pathname.replace(/\/$/, '');
+        return { ...item, url: url.href, ...(lastmod && { lastmod }) };
       },
     }),
   ],
