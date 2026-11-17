@@ -43,7 +43,13 @@ const siteDate = z.coerce.date().transform(atSiteMidnight);
  */
 const articles = defineCollection({
     // 若修改 base，請一併修改 src/utils/categories.ts 的 ARTICLES_BASE
-    loader: glob({ pattern: "**/*.md", base: "./src/content/articles" }),
+    loader: glob({
+        pattern: [
+            "**/*.md",
+            "**/*.mdx",
+        ],
+        base: "./src/content/articles"
+    }),
     schema: z.object({
         title: z.string(),
         date: siteDate,
