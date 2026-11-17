@@ -30,10 +30,28 @@ function normalize(path: string): string {
     return "/" + out.join("/");
 }
 
+/**
+ * MDX 在建置頁面時才轉譯，文章資料中沒有 rendered.metadata.imagePaths，
+ * 改從原始內容找出圖片路徑：Markdown 的 ![說明](路徑) 與 JSX / HTML 的 src="路徑"。
+ */
+function imagePathsFromBody(body: string): string[] {
+    const paths = new Set<string>();
+    for (const m of body.matchAll(/!\[[^\]]*\]\(\s*(?:<([^>]+)>|([^)\s]+))/g)) paths.add(m[1] ?? m[2]);
+    for (const m of body.matchAll(/\bsrc\s*=\s*["']([^"']+)["']/g)) paths.add(m[1]);
+    return [...paths].map((p) => {
+        try {
+            // 與 src/plugins/originalImage.ts 的 data-original 一致（decodeURI 後的路徑）
+            return decodeURI(p);
+        } catch {
+            return p;
+        }
+    });
+}
+
 export async function originalImages(article: Article): Promise<Record<string, OriginalImage>> {
     const file = (article.filePath ?? "").replace(/\\/g, "/");
     const dir = file.slice(0, file.lastIndexOf("/"));
-    const used = article.rendered?.metadata?.imagePaths ?? [];
+    const used = article.rendered?.metadata?.imagePaths ?? imagePathsFromBody(article.body ?? "");
 
     const map: Record<string, OriginalImage> = {};
     for (const rel of used) {
