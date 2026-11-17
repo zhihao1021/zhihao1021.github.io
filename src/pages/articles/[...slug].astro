@@ -4,6 +4,7 @@ import ArticleLayout from "../../layouts/ArticleLayout.astro";
 import Toc from "../../components/Toc.astro";
 import CodeCopy from "../../components/CodeCopy.astro";
 import ShareButton from "../../components/ShareButton.astro";
+import PrevNext from "../../components/PrevNext.astro";
 import { shortCode, shortPath } from "../../utils/shortLinks";
 import "../../styles/callouts.css";
 import { getArticles, formatDate, formatDateTime, toSlug, type Article } from "../../utils/articles";
@@ -77,7 +78,8 @@ const showToc = headings.some((h) => h.depth >= 2 && h.depth <= 3);
         </header>
 
         <div class="prose">
-            <Content />
+            {/* MDX 中可直接使用的元件（不需 import） */}
+            <Content components={{ PrevNext }} />
         </div>
 
         {

@@ -2,6 +2,7 @@
 import { readFile } from 'node:fs/promises';
 import { defineConfig } from 'astro/config';
 
+import mdx from '@astrojs/mdx';
 import react from '@astrojs/react';
 import sitemap from '@astrojs/sitemap';
 import { satteri } from '@astrojs/markdown-satteri';
@@ -56,6 +57,8 @@ export default defineConfig({
     }),
   },
   integrations: [
+    // .mdx 文章：沿用上面 markdown.processor 的 Sätteri 設定與外掛
+    mdx(),
     react(),
     // 建置時自動產生 /sitemap-index.xml 與 /sitemap-0.xml
     sitemap({

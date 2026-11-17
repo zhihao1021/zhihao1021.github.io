@@ -3,7 +3,7 @@ import { toSlug, type Article } from "./articles";
 import { isHiddenCategory } from "./hiddenCategories";
 
 /** 必須與 src/content.config.ts 中 glob loader 的 base 一致 */
-const ARTICLES_BASE = "src/content/articles/";
+export const ARTICLES_BASE = "src/content/articles/";
 
 export interface CategoryNode {
     /** 資料夾路徑，例如 "dev/frontend"；根節點為 "" */

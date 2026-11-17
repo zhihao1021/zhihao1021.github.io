@@ -1,0 +1,210 @@
+---
+/**
+ * 上一篇 / 下一篇導覽，給 .mdx 文章使用（文章頁已透過 components 提供，不需 import）。
+ * 只要傳入文章檔案的位置，標題與網址會自動解析：
+ *
+ *   <PrevNext prev="./00-intro.md" next="./02-led.mdx" />      相對於目前這篇文章
+ *   <PrevNext next="../../basic/windows-add-to-path.md" />
+ *   <PrevNext prev="basic/windows-add-to-path.md" />           相對於 src/content/articles/
+ *   <PrevNext prev="src/content/articles/basic/windows-add-to-path.md" />
+ *   <PrevNext prev={{ href: "https://example.com", title: "外部文章" }} />   自訂連結
+ *
+ * - 副檔名可省略（依序嘗試 .md、.mdx）
+ * - 找不到文章時建置失敗，避免出現壞掉的連結
+ * - 草稿文章會略過（只在終端機顯示警告），方便先寫好連結再發布下一篇
+ * - 可以只有其中一邊；只有「下一篇」時仍靠右排列
+ * - 電腦版左右並排，窄螢幕改為上下排列
+ */
+import { posix } from "node:path";
+import { getCollection } from "astro:content";
+import { ARTICLES_BASE } from "../utils/categories";
+
+type Link = string | { href: string; title: string };
+
+interface Props {
+    prev?: Link;
+    next?: Link;
+}
+
+const { prev, next } = Astro.props;
+
+const articles = await getCollection("articles");
+const fileOf = (a: (typeof articles)[number]) => (a.filePath ?? "").replace(/\\/g, "/").replace(/^\.?\//, "");
+
+// 目前這篇文章（由網址 /articles/<id> 找出），用來解析相對路徑
+const currentId = decodeURI(Astro.url.pathname).replace(/^\/articles\//, "").replace(/\/$/, "");
+const current = articles.find((a) => a.id === currentId);
+
+/** 把傳入的位置轉成專案根目錄起算的檔案路徑（不含副檔名的也照樣回傳） */
+function toFile(link: string): string {
+    const path = link.trim().replace(/\\/g, "/");
+    if (path.startsWith("./") || path.startsWith("../")) {
+        if (!current) throw new Error(`[PrevNext] 無法解析相對路徑「${link}」：找不到目前的文章`);
+        return posix.join(posix.dirname(fileOf(current)), path);
+    }
+    const trimmed = path.replace(/^\//, "");
+    return trimmed.startsWith(ARTICLES_BASE) ? posix.normalize(trimmed) : posix.join(ARTICLES_BASE, trimmed);
+}
+
+async function resolveLink(link: Link | undefined): Promise<{ href: string; title: string } | undefined> {
+    if (!link) return undefined;
+    if (typeof link !== "string") return link;
+
+    const file = toFile(link);
+    const candidates = /\.mdx?$/.test(file) ? [file] : [`${file}.md`, `${file}.mdx`];
+    const entry = articles.find((a) => candidates.includes(fileOf(a)));
+    if (!entry) throw new Error(`[PrevNext] 找不到文章「${link}」（解析為 ${candidates.join(" 或 ")}）`);
+    if (entry.data.draft) {
+        console.warn(`[PrevNext] 文章「${link}」是草稿，暫不顯示連結`);
+        return undefined;
+    }
+    return { href: `/articles/${entry.id}`, title: entry.data.title };
+}
+
+const [prevLink, nextLink] = await Promise.all([resolveLink(prev), resolveLink(next)]);
+---
+
+{
+    (prevLink || nextLink) && (
+        <nav class="pager" aria-label="上一篇與下一篇" data-no-print>
+            {prevLink && (
+                <a href={prevLink.href} class="link prev" rel="prev">
+                    <span class="material-symbols-outlined arrow" aria-hidden="true">
+                        arrow_back
+                    </span>
+                    <span class="text">
+                        <span class="label">上一篇</span>
+                        <span class="title" title={prevLink.title}>
+                            {prevLink.title}
+                        </span>
+                    </span>
+                </a>
+            )}
+            {nextLink && (
+                <a href={nextLink.href} class="link next" rel="next">
+                    <span class="text">
+                        <span class="label">下一篇</span>
+                        <span class="title" title={nextLink.title}>
+                            {nextLink.title}
+                        </span>
+                    </span>
+                    <span class="material-symbols-outlined arrow" aria-hidden="true">
+                        arrow_forward
+                    </span>
+                </a>
+            )}
+        </nav>
+    )
+}
+
+<style>
+    .pager {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 1rem;
+        margin: 2.5rem 0;
+    }
+
+    .link {
+        display: flex;
+        align-items: center;
+        gap: 0.9rem;
+        min-width: 0;
+        padding: 0.85rem 1.1rem;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        color: var(--text);
+        text-decoration: none;
+        transition:
+            border-color 0.2s,
+            background-color 0.2s;
+    }
+
+    /* 只有下一篇時仍放在右欄 */
+    .next {
+        grid-column: 2;
+    }
+
+    .link:hover {
+        border-color: var(--accent);
+        background: var(--hover);
+    }
+
+    .link:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+    }
+
+    .arrow {
+        flex-shrink: 0;
+        color: var(--text-muted);
+        font-size: 1.4rem;
+        transition:
+            color 0.2s,
+            transform 0.2s;
+    }
+
+    .link:hover .arrow {
+        color: var(--accent);
+    }
+
+    .prev:hover .arrow {
+        transform: translateX(-3px);
+    }
+
+    .next:hover .arrow {
+        transform: translateX(3px);
+    }
+
+    .text {
+        display: flex;
+        flex: 1;
+        flex-direction: column;
+        min-width: 0;
+        line-height: 1.5;
+    }
+
+    .next .text {
+        text-align: right;
+    }
+
+    .label {
+        color: var(--text-muted);
+        font-size: 0.8rem;
+    }
+
+    .title {
+        overflow: hidden;
+        font-size: 1rem;
+        font-weight: 500;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        transition: color 0.2s;
+    }
+
+    .link:hover .title {
+        color: var(--accent);
+    }
+
+    /* 窄螢幕：上下排列 */
+    @media (max-width: 640px) {
+        .pager {
+            grid-template-columns: minmax(0, 1fr);
+            gap: 0.75rem;
+        }
+
+        .next {
+            grid-column: auto;
+        }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .arrow {
+            transition: none;
+        }
+
+        .link:hover .arrow {
+            transform: none;
+        }
+    }
+</style>
